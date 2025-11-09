@@ -17,23 +17,26 @@ import { RangeThumbType } from "./types";
 /**
  * RangeThumb component renders a draggable slider handle
  */
-const RangeThumb = React.memo<RangeThumbProps>(
-  ({ id, type, percentage, isDragging, onMouseDown, onTouchStart }) => {
-    return (
-      <button
-        type="button"
-        id={id}
-        className={`${styles.handle} ${isDragging ? styles.dragging : ""}`}
-        style={{ left: `${percentage}%` }}
-        onMouseDown={onMouseDown}
-        onTouchStart={onTouchStart}
-        data-testid={`${type}-handle`}
-      />
-    );
-  }
-);
-
-RangeThumb.displayName = "RangeThumb";
+const RangeThumb: React.FC<RangeThumbProps> = ({
+  id,
+  type,
+  percentage,
+  isDragging,
+  onMouseDown,
+  onTouchStart,
+}) => {
+  return (
+    <button
+      type="button"
+      id={id}
+      className={`${styles.handle} ${isDragging ? styles.dragging : ""}`}
+      style={{ left: `${percentage}%` }}
+      onMouseDown={onMouseDown}
+      onTouchStart={onTouchStart}
+      data-testid={`${type}-handle`}
+    />
+  );
+};
 
 /**
  * Calculate decimal precision from a step value
@@ -44,6 +47,19 @@ function getDecimalPrecision(step: number): number {
   const stepStr = step.toString();
   const decimalPart = stepStr.split(".")[1];
   return decimalPart ? decimalPart.length : 0;
+}
+
+/**
+ * Format a label with decimal handling
+ * @param val - The value to format
+ * @param step - The step value for decimal precision
+ * @returns Formatted label string
+ */
+function defaultFormatLabel(val: number, step: number) {
+  const decimals = getDecimalPrecision(step);
+  if (decimals > 0) return val.toFixed(decimals);
+  const rounded = Math.round(val);
+  return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2);
 }
 
 /**
@@ -356,13 +372,10 @@ function useEditableLabel({
     previousDraggingRef.current = dragging;
   }, [dragging]);
 
-  const handleLabelClick = useCallback(
-    (type: RangeThumbType) => {
-      if (!editable || fixedValues) return;
-      setEditingLabel(type);
-    },
-    [editable, fixedValues]
-  );
+  const handleLabelClick = (type: RangeThumbType) => {
+    if (!editable || fixedValues) return;
+    setEditingLabel(type);
+  };
 
   const commitEdit = useCallback(() => {
     if (!tempValue || tempValue === "-" || tempValue === ".") {
@@ -385,28 +398,22 @@ function useEditableLabel({
     setTempValue("");
   }, [tempValue, editingLabel, updateMinValue, updateMaxValue]);
 
-  const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const inputValue = e.target.value;
-      if (inputValue === "" || /^-?\d*\.?\d*$/.test(inputValue)) {
-        setTempValue(inputValue);
-      }
-    },
-    []
-  );
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    if (inputValue === "" || /^-?\d*\.?\d*$/.test(inputValue)) {
+      setTempValue(inputValue);
+    }
+  };
 
-  const handleInputKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        commitEdit();
-        e.currentTarget.blur();
-      } else if (e.key === "Escape") {
-        setEditingLabel(null);
-        setTempValue("");
-      }
-    },
-    [commitEdit]
-  );
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      commitEdit();
+      e.currentTarget.blur();
+    } else if (e.key === "Escape") {
+      setEditingLabel(null);
+      setTempValue("");
+    }
+  };
 
   return {
     editingLabel,
@@ -476,22 +483,8 @@ export const Range: React.FC<RangeProps> = ({
     }
   }
 
-  // Format label function with decimal handling
-  const defaultFormatLabel = useCallback(
-    (val: number) => {
-      const decimals = getDecimalPrecision(step);
-      if (decimals > 0) {
-        return val.toFixed(decimals);
-      }
-      const rounded = Math.round(val);
-      return Number.isInteger(rounded)
-        ? rounded.toString()
-        : rounded.toFixed(2);
-    },
-    [step]
-  );
-
-  const labelFormatter = formatLabel || defaultFormatLabel;
+  const labelFormatter =
+    formatLabel || ((val: number) => defaultFormatLabel(val, step));
 
   // Initialize range calculations (handles both fixed and step-based modes)
   const {
@@ -630,9 +623,6 @@ export const Range: React.FC<RangeProps> = ({
     };
   }, [minPercentage, maxPercentage]);
 
-  // Empty handler for non-editing state (prevents hydration issues)
-  const emptyHandler = useCallback(() => {}, []);
-
   // Render component
   return (
     <div className={styles.container}>
@@ -649,7 +639,7 @@ export const Range: React.FC<RangeProps> = ({
               key={type}
               id={`range-${type}-input`}
               value={isEditing ? tempValue : labelFormatter(value)}
-              onChange={isEditing ? handleInputChange : emptyHandler}
+              onChange={isEditing ? handleInputChange : undefined}
               onBlur={isEditing ? commitEdit : undefined}
               onKeyDown={isEditing ? handleInputKeyDown : undefined}
               onFocus={
