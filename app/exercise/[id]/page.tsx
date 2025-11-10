@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getExerciseConfig } from "@/app/actions";
 import { ArrowLeftIcon } from "@/components/icons";
-import { ExerciseContent } from "./ExerciseContent";
+import { ExerciseContent } from "@/components/ExerciseContent";
 
 interface PageProps {
   params: Promise<{ id: string }>;
