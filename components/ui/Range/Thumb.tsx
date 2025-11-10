@@ -6,6 +6,7 @@ import styles from "./Thumb.module.css";
  * Supports 2D movement (both X and Y)
  */
 export const Thumb: React.FC<ThumbProps> = ({
+  ref,
   id,
   percentageX,
   percentageY,
@@ -20,6 +21,7 @@ export const Thumb: React.FC<ThumbProps> = ({
 
   return (
     <button
+      ref={ref}
       type="button"
       id={id}
       className={`${styles.handle} ${isDragging ? styles.dragging : ""}`}

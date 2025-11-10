@@ -5,6 +5,7 @@ export type Orientation = "horizontal" | "vertical";
 export type ThumbHandle = "min" | "max";
 
 export interface ThumbProps {
+  ref: React.RefObject<HTMLButtonElement | null>;
   id: string;
   percentageX: number;
   percentageY: number;
@@ -22,9 +23,9 @@ export interface RangeBarProps {
 export interface RangeProps {
   min?: number;
   max?: number;
-  minValue: number;
-  maxValue: number;
-  onChange?: (minValue: number, maxValue: number) => void;
+  value?: [number, number]; // Controlled mode - [minValue, maxValue]
+  defaultValue?: [number, number]; // Uncontrolled mode - [defaultMin, defaultMax]
+  onChange?: (value: [number, number]) => void;
   orientation?: Orientation;
   step?: number;
   disabled?: boolean;

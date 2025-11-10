@@ -30,8 +30,12 @@
   transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.handle:hover::after {
+.handle.dragging::after,
+.handle:hover::after,
+.handle:focus-visible::after,
+.handle:active::after {
   transform: scale(1.3);
+  transition: transform 0.05s ease-out;
 }
 
 .handle.dragging {
@@ -39,16 +43,7 @@
   z-index: 3;
 }
 
-.handle.dragging::after {
-  transform: scale(1.35);
-  transition: transform 0.05s ease-out;
-}
-
 .handle:focus {
   outline: none;
   z-index: 3;
-}
-
-.handle:active::after {
-  transform: scale(1.25);
 }
