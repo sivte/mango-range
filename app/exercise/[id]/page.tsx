@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getExerciseConfig } from "@/app/actions";
 import { ArrowLeftIcon } from "@/components/icons";
 import { ExerciseContent } from "@/components/ExerciseContent";
+import { exerciseService } from "@/services/exercise.service";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -10,10 +10,9 @@ interface PageProps {
 
 export default async function ExercisePage({ params }: PageProps) {
   const { id } = await params;
-
   let config;
   try {
-    config = await getExerciseConfig(id);
+    config = await exerciseService.getExerciseConfig(id);
   } catch {
     notFound();
   }

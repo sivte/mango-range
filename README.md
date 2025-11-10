@@ -10,16 +10,18 @@ This project demonstrates a modern React application architecture with a focus o
 
 ### Server-Side Architecture
 
-The application follows a three-layer architecture pattern:
+The application follows a three-layer architecture pattern for data fetching:
 
-#### 1. **Server Actions Layer**
+#### 1. **Server Components**
 
-Server Actions provide the entry point for client-server communication. They handle:
+Server Components in Next.js fetch data directly by calling services. They:
 
-- Error handling
-- Calling the appropriate service layer
+- Run on the server during rendering
+- Call service layer methods directly
+- Handle errors and display appropriate UI (notFound, error boundaries)
+- Pass data to client components as props
 
-Located in `app/actions/`, these functions are called directly from React components using Next.js Server Actions.
+Located in `app/`, Server Components use async/await to fetch data before rendering.
 
 #### 2. **Service Layer**
 
@@ -43,7 +45,7 @@ The database layer is designed to be mockable for development and testing:
 - Uses in-memory data structures for mock implementation
 - Can be replaced with actual database clients (PostgreSQL, MongoDB, etc.) without changing upper layers
 
-Located in `db/mock/`, the mock database simulates a real database.
+Located in `db/`, the mock database simulates a real database.
 
 ## Range Component Architecture
 
@@ -230,8 +232,7 @@ pnpm test
 
 ```
 /app
-  /actions          # Server Actions
-  /exercise/[id]    # Exercise detail page
+  /exercise/[id]    # Exercise detail page (Server Component)
   /test             # Range component testing page
 /components
   /ui
@@ -239,7 +240,7 @@ pnpm test
     /NumericInput   # Shared input component
 /services           # Business logic layer
 /repositories       # Data access layer
-/db/mock            # Mock database
+/db                 # Mock database
 /hooks              # Custom React hooks
 /types              # TypeScript type definitions
 ```
