@@ -48,7 +48,6 @@ export function ExerciseContent({ exerciseId, config }: ExerciseContentProps) {
         "rangeValues" in config && (
           <Range
             fixedValues={config.rangeValues}
-            onChange={console.log}
             formatLabel={formatCurrency}
             showInputs={true}
             disabledInputs={true}
