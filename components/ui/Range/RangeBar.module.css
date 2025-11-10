@@ -1,0 +1,42 @@
+/* Track base */
+.track {
+  position: absolute;
+  background-color: var(--range-track, #e0e0e0);
+}
+
+/* Active track base */
+.activeTrack {
+  position: absolute;
+  background-color: var(--range-active-track, #000);
+  pointer-events: none;
+}
+
+/* Horizontal styles */
+.horizontal.track {
+  width: 100%;
+  height: 1px;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.horizontal.activeTrack {
+  height: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Vertical styles */
+.vertical.track {
+  width: 1px;
+  height: 100%;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.vertical.activeTrack {
+  width: 1px;
+  left: 50%;
+  transform: translateX(-50%);
+}

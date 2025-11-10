@@ -1,102 +1,96 @@
 .container {
-  width: 100%;
-  padding: 20px 0;
+  position: relative;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
 }
 
-.labelsContainer {
-  position: relative;
+.horizontal {
   width: 100%;
   height: 24px;
-}
-
-.labelsContainer > :first-child {
-  position: absolute;
-  left: 0;
-  top: 0;
-  text-align: left;
-}
-
-.labelsContainer > :last-child {
-  position: absolute;
-  right: 0;
-  top: 0;
-  text-align: right;
-}
-
-.rangeContainer {
-  position: relative;
-  height: 48px;
   display: flex;
   align-items: center;
-  padding: 0;
 }
 
-.track {
-  position: absolute;
-  width: 100%;
-  height: 1px;
-  background-color: var(--range-track, #e0e0e0);
-  left: 0;
-}
-
-.activeTrack {
-  position: absolute;
-  height: 1px;
-  background-color: var(--range-active-track, #000);
-}
-
-.handle {
-  appearance: none;
-  border: none;
-  background-color: transparent;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-
-  position: absolute;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  transform: translateX(-50%);
-  cursor: grab;
-  transition: none;
-  z-index: 2;
-  will-change: left;
-  touch-action: none;
+.vertical {
+  width: 24px;
+  min-width: 24px;
+  height: 100%;
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
-.handle::after {
-  content: "";
-  width: 8px;
-  height: 8px;
-  background-color: var(--range-thumb, #000);
-  border-radius: 50%;
-  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-.handle:hover::after {
-  transform: scale(1.3);
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0;
 }
 
-.handle.dragging {
-  cursor: grabbing;
-  z-index: 3;
+.wrapperHorizontal {
+  flex-direction: row;
+  align-items: center;
 }
 
-.handle.dragging::after {
-  transform: scale(1.35);
-  transition: transform 0.05s ease-out;
+.wrapperVertical {
+  flex-direction: row;
+  align-items: center;
+  height: 100%;
 }
 
-.handle:focus {
-  outline: none;
-  z-index: 3;
+.inputsContainer {
+  position: absolute;
+  display: flex;
+  z-index: 10;
+  pointer-events: none;
 }
 
-.handle:active::after {
-  transform: scale(1.25);
+.inputsContainerHorizontal {
+  width: 100%;
+  justify-content: space-between;
+  left: 0;
+  top: -20px;
+}
+
+.inputsContainerVertical {
+  height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  left: 24px;
+  top: 0;
+  align-items: flex-start;
+}
+
+.inputWrapper {
+  pointer-events: auto;
+}
+
+.inputWrapperLeft {
+  text-align: left;
+}
+
+.inputWrapperLeft :global(input) {
+  text-align: left;
+}
+
+.inputWrapperRight {
+  text-align: right;
+}
+
+.inputWrapperRight :global(input) {
+  text-align: right;
+}
+
+.inputsContainerVertical .inputWrapper {
+  text-align: left;
+}
+
+.inputsContainerVertical .inputWrapper :global(input) {
+  text-align: left;
 }

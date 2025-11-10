@@ -33,3 +33,8 @@
 .input:not(:read-only) {
   cursor: pointer;
 }
+
+.input:disabled {
+  opacity: 0.5;
+  color: var(--input-text-disabled, #999);
+}

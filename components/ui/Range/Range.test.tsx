@@ -1,26 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Range } from "./Range";
 
-// Helper function to get input by its value
-const getInputByValue = (value: string) => {
-  const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-  return inputs.find((input) => input.value === value);
-};
-
 const mockBoundingClientRect = vi.fn();
 
-describe("Range Component", () => {
+describe("Range2 Component", () => {
   beforeEach(() => {
-    // clientX 500px = 50% --> value 50
+    // clientX 500px = 50% --> value 50 (for min 0, max 100)
     mockBoundingClientRect.mockReturnValue({
       width: 1000,
-      height: 10,
+      height: 1000,
       top: 0,
       left: 0,
       right: 1000,
-      bottom: 10,
+      bottom: 1000,
       x: 0,
       y: 0,
       toJSON: () => {},
@@ -29,608 +23,728 @@ describe("Range Component", () => {
   });
 
   describe("Rendering", () => {
-    it("should render with default values", () => {
-      render(<Range min={1} max={100} />);
+    it("should render with required props (controlled)", () => {
+      render(<Range minValue={0} maxValue={100} min={0} max={100} />);
 
-      expect(getInputByValue("1")).toBeDefined();
-      expect(getInputByValue("100")).toBeDefined();
-
-      // Verify handles are present
-      const [minThumb, maxThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-      expect(minThumb).toBeDefined();
-      expect(maxThumb).toBeDefined();
+      const container = screen.getByTestId("range-container");
+      expect(container).toBeDefined();
     });
 
-    it("should render two draggable thumbs with correct ARIA attributes", () => {
-      render(<Range min={0} max={50} />);
-
-      const thumbs = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-      expect(thumbs).toHaveLength(2);
-    });
-
-    it("should respect initial values", () => {
-      render(
-        <Range min={1} max={100} initialMinValue={20} initialMaxValue={80} />
+    it("should render with default orientation (horizontal)", () => {
+      const { container } = render(
+        <Range minValue={0} maxValue={100} min={0} max={100} />
       );
 
-      expect(getInputByValue("20")).toBeDefined();
-      expect(getInputByValue("80")).toBeDefined();
+      const rangeContainer = container.querySelector(
+        '[data-testid="range-container"]'
+      );
+      expect(rangeContainer?.className).toContain("horizontal");
+    });
+
+    it("should render in vertical orientation", () => {
+      const { container } = render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          orientation="vertical"
+        />
+      );
+
+      const rangeContainer = container.querySelector(
+        '[data-testid="range-container"]'
+      );
+      expect(rangeContainer?.className).toContain("vertical");
+    });
+
+    it("should render inputs when showInputs is true", () => {
+      render(
+        <Range minValue={25} maxValue={75} min={0} max={100} showInputs />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs).toHaveLength(2);
+      expect(inputs[0].value).toBe("25");
+      expect(inputs[1].value).toBe("75");
+    });
+
+    it("should not render inputs when showInputs is false", () => {
+      render(<Range minValue={25} maxValue={75} min={0} max={100} />);
+
+      const inputs = screen.queryAllByRole("textbox");
+      expect(inputs).toHaveLength(0);
     });
 
     it("should render with custom format label", () => {
       render(
         <Range
-          min={1}
-          max={100}
-          initialMinValue={10}
-          initialMaxValue={90}
-          formatLabel={(val) => `$${val}.00`}
-        />
-      );
-
-      expect(getInputByValue("$10.00")).toBeDefined();
-      expect(getInputByValue("$90.00")).toBeDefined();
-    });
-  });
-
-  describe("Mouse Drag Interactions", () => {
-    it("should move min thumb when dragged", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      // Drag min thumb to 50% (value 50)
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 500 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(getInputByValue("50")).toBeDefined();
-        expect(onChange).toHaveBeenCalled();
-      });
-    });
-
-    it("should move max thumb when dragged", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      const [, maxThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      // Drag max thumb to 75% (value 75)
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: maxThumb },
-        { coords: { clientX: 750 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(getInputByValue("75")).toBeDefined();
-        expect(onChange).toHaveBeenCalled();
-      });
-    });
-
-    it("should push max thumb when min thumb is dragged past it", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(
-        <Range
+          minValue={10}
+          maxValue={90}
           min={0}
           max={100}
-          initialMinValue={20}
-          initialMaxValue={60}
-          onChange={onChange}
-        />
-      );
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 800 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-        const minValue = parseInt(inputs[0].value);
-        const maxValue = parseInt(inputs[1].value);
-
-        expect(minValue).toBeGreaterThanOrEqual(60);
-        expect(maxValue).toBeGreaterThan(minValue);
-        expect(onChange).toHaveBeenCalled();
-      });
-    });
-
-    it("should push min thumb when max thumb is dragged past it", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(
-        <Range
-          min={0}
-          max={100}
-          initialMinValue={40}
-          initialMaxValue={80}
-          onChange={onChange}
-        />
-      );
-
-      const [maxThumb] = [screen.getByTestId("max-handle")];
-
-      // Drag max thumb to 20% (past min)
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: maxThumb },
-        { coords: { clientX: 200 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        // Both thumbs should have moved (push behavior)
-        const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-        const minValue = parseInt(inputs[0].value);
-        const maxValue = parseInt(inputs[1].value);
-
-        expect(maxValue).toBeLessThanOrEqual(40);
-        expect(minValue).toBeLessThan(maxValue);
-        expect(onChange).toHaveBeenCalled();
-      });
-    });
-
-    it("should handle multiple drag operations", async () => {
-      const user = userEvent.setup();
-
-      render(<Range min={0} max={100} />);
-
-      const [minThumb, maxThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      // First drag: move min to 25
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 250 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(getInputByValue("25")).toBeDefined();
-      });
-
-      // Second drag: move max to 75
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: maxThumb },
-        { coords: { clientX: 750 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(getInputByValue("75")).toBeDefined();
-      });
-    });
-
-    it("should call onChange with correct values during drag", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 300 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-        const lastCall = onChange.mock.calls[onChange.mock.calls.length - 1];
-        expect(lastCall[0]).toBe(30);
-        expect(lastCall[1]).toBe(100);
-      });
-    });
-  });
-
-  describe("Touch Interactions (Multi-touch Support)", () => {
-    it("should support touch interactions on thumbs", async () => {
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      const touchEvent = new TouchEvent("touchstart", {
-        bubbles: true,
-        cancelable: true,
-        touches: [
-          {
-            identifier: 0,
-            clientX: 300,
-            clientY: 0,
-          } as Touch,
-        ],
-        changedTouches: [
-          {
-            identifier: 0,
-            clientX: 300,
-            clientY: 0,
-          } as Touch,
-        ],
-      });
-
-      act(() => {
-        minThumb.dispatchEvent(touchEvent);
-      });
-    });
-  });
-
-  describe("Keyboard Navigation", () => {
-    it("should have keyboard focus support on min thumb", async () => {
-      render(<Range min={0} max={100} initialMinValue={50} />);
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      minThumb.focus();
-      expect(document.activeElement).toBe(minThumb);
-    });
-
-    it("should have keyboard focus support on max thumb", async () => {
-      render(<Range min={0} max={100} initialMaxValue={50} />);
-
-      const [, maxThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      maxThumb.focus();
-      expect(document.activeElement).toBe(maxThumb);
-    });
-  });
-
-  describe("Fixed Values Mode", () => {
-    const fixedValues = [1.99, 5.99, 10.99, 30.99, 50.99, 70.99];
-
-    it("should render with fixed values", () => {
-      render(
-        <Range
-          min={1.99}
-          max={70.99}
-          fixedValues={fixedValues}
-          formatLabel={(val) => `${val.toFixed(2)}€`}
-        />
-      );
-
-      expect(getInputByValue("1.99€")).toBeDefined();
-      expect(getInputByValue("70.99€")).toBeDefined();
-    });
-
-    it("should snap to closest fixed value when dragged", async () => {
-      const user = userEvent.setup();
-
-      render(
-        <Range
-          min={1.99}
-          max={70.99}
-          fixedValues={fixedValues}
-          formatLabel={(val) => `${val.toFixed(2)}€`}
-        />
-      );
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 300 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-        const value = parseFloat(inputs[0].value.replace("€", ""));
-        expect(fixedValues).toContain(value);
-      });
-    });
-
-    it("should respect fixed values when pushing thumbs", async () => {
-      const user = userEvent.setup();
-
-      render(
-        <Range
-          min={1.99}
-          max={70.99}
-          fixedValues={fixedValues}
-          initialMinValue={10.99}
-          initialMaxValue={30.99}
-          formatLabel={(val) => `${val.toFixed(2)}€`}
-        />
-      );
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      // Drag min past max
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 700 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-        const minValue = parseFloat(inputs[0].value.replace("€", ""));
-        const maxValue = parseFloat(inputs[1].value.replace("€", ""));
-
-        // Both should be fixed values
-        expect(fixedValues).toContain(minValue);
-        expect(fixedValues).toContain(maxValue);
-        // Max should be greater than min
-        expect(maxValue).toBeGreaterThan(minValue);
-      });
-    });
-
-    it("should disable label editing with fixed values", () => {
-      render(
-        <Range
-          min={1.99}
-          max={70.99}
-          fixedValues={fixedValues}
-          formatLabel={(val) => `${val.toFixed(2)}€`}
+          showInputs
+          formatLabel={(val) => `€${val}`}
         />
       );
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-      // Inputs should be present and readOnly
-      expect(inputs.length).toBe(2);
-      inputs.forEach((input) => {
-        expect(input.getAttribute("readonly")).not.toBeNull();
-      });
+      // When not focused, should show formatted value
+      expect(inputs[0].value).toBe("€10");
+      expect(inputs[1].value).toBe("€90");
     });
   });
 
-  describe("Editable Labels", () => {
-    it("should allow editing min value label when editable=true", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} editable={true} onChange={onChange} />);
-
-      const minInput = getInputByValue("0");
-      expect(minInput).toBeDefined();
-
-      // Should not be readOnly when editable=true (allows mobile keyboard)
-      expect(minInput?.readOnly).toBe(false);
-
-      // Click to activate editing mode
-      await user.click(minInput!);
-
-      // Edit the value
-      await user.clear(minInput!);
-      await user.type(minInput!, "25");
-      await user.tab(); // blur
-
-      // Wait for change to be applied
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-      });
-    });
-
-    it("should not allow editing when editable=false", async () => {
-      render(<Range min={0} max={100} editable={false} />);
-
-      const minInput = getInputByValue("0");
-      expect(minInput).toBeDefined();
-
-      // Input should be readOnly when not editable
-      expect(minInput?.getAttribute("readonly")).not.toBeNull();
-    });
-  });
-
-  describe("Edge Cases", () => {
-    it("should handle min value equal to 0", () => {
-      render(<Range min={0} max={10} />);
-
-      expect(getInputByValue("0")).toBeDefined();
-    });
-
-    it("should handle negative values", () => {
-      render(<Range min={-10} max={10} />);
-
-      expect(getInputByValue("-10")).toBeDefined();
-    });
-
-    it("should handle decimal values", () => {
-      const values = [1.5, 2.5, 3.5];
-      render(
-        <Range
-          min={1.5}
-          max={3.5}
-          fixedValues={values}
-          formatLabel={(val) => `${val}€`}
-        />
+  describe("Controlled Component Behavior", () => {
+    it("should update when props change", () => {
+      const { rerender } = render(
+        <Range minValue={0} maxValue={100} min={0} max={100} showInputs />
       );
-
-      expect(getInputByValue("1.5€")).toBeDefined();
-      expect(getInputByValue("3.5€")).toBeDefined();
-    });
-
-    it("should handle very large ranges", () => {
-      render(<Range min={0} max={10000} />);
-
-      expect(getInputByValue("0")).toBeDefined();
-      expect(getInputByValue("10000")).toBeDefined();
-    });
-
-    it("should handle edge case where min equals max", () => {
-      // Suppress validation warning for this intentional edge case test
-      const consoleErrorSpy = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-
-      render(<Range min={50} max={50} />);
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
-      expect(inputs.length).toBe(2);
-      expect(inputs[0].value).toBe("50");
-      expect(inputs[1].value).toBe("50");
+      expect(inputs[0].value).toBe("0");
+      expect(inputs[1].value).toBe("100");
 
-      // Verify validation error was logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        "[Range] Invalid props: min must be less than max",
-        { min: 50, max: 50 }
+      // Update props
+      rerender(
+        <Range minValue={25} maxValue={75} min={0} max={100} showInputs />
       );
 
-      consoleErrorSpy.mockRestore();
-    });
-  });
-
-  describe("Performance & Re-renders", () => {
-    it("should not call onChange unnecessarily", async () => {
-      const onChange = vi.fn();
-
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      expect(onChange).not.toHaveBeenCalled();
+      const updatedInputs = screen.getAllByRole(
+        "textbox"
+      ) as HTMLInputElement[];
+      expect(updatedInputs[0].value).toBe("25");
+      expect(updatedInputs[1].value).toBe("75");
     });
 
-    it("should handle rapid drag movements efficiently", async () => {
+    it("should call onChange when values are modified", async () => {
       const user = userEvent.setup();
       const onChange = vi.fn();
 
-      render(<Range min={0} max={100} onChange={onChange} />);
-
-      const [minThumb] = [
-        screen.getByTestId("min-handle"),
-        screen.getByTestId("max-handle"),
-      ];
-
-      // Simulate rapid movements
-      await user.pointer([
-        { keys: "[MouseLeft>]", target: minThumb },
-        { coords: { clientX: 100 } },
-        { coords: { clientX: 200 } },
-        { coords: { clientX: 300 } },
-        { keys: "[/MouseLeft]" },
-      ]);
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalled();
-        expect(onChange.mock.calls.length).toBeLessThan(100);
-      });
-    });
-  });
-
-  describe("Step behavior", () => {
-    it("should allow decimal input when step is decimal", async () => {
-      const user = userEvent.setup();
-      render(<Range min={0} max={10} step={0.5} editable={true} />);
-
-      const minInput = getInputByValue("0.0");
-      expect(minInput).toBeDefined();
-
-      // Click to enter edit mode
-      await user.click(minInput!);
-
-      // Type a decimal value
-      await user.clear(minInput!);
-      await user.type(minInput!, "2.5");
-
-      // Press Enter to commit
-      await user.keyboard("{Enter}");
-
-      await waitFor(() => {
-        expect(getInputByValue("2.5")).toBeDefined();
-      });
-    });
-
-    it("should format values with decimals based on step", () => {
-      const { unmount: unmount1 } = render(
-        <Range min={0} max={10} initialMinValue={2.5} step={0.5} />
-      );
-      expect(getInputByValue("2.5")).toBeDefined();
-      unmount1();
-
-      render(<Range min={0} max={10} initialMinValue={2.75} step={0.25} />);
-      expect(getInputByValue("2.75")).toBeDefined();
-    });
-
-    it("should snap to step when editing", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
       render(
         <Range
+          minValue={0}
+          maxValue={100}
           min={0}
-          max={10}
-          step={0.5}
-          editable={true}
+          max={100}
+          showInputs
           onChange={onChange}
         />
       );
 
-      const minInput = getInputByValue("0.0");
-      await user.click(minInput!);
-      await user.clear(minInput!);
-      await user.type(minInput!, "2.3");
-      await user.keyboard("{Enter}");
-
-      await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(2.5, 10);
-      });
-    });
-
-    it("should work with integer step", async () => {
-      const user = userEvent.setup();
-      const onChange = vi.fn();
-      render(
-        <Range min={0} max={100} step={5} editable={true} onChange={onChange} />
-      );
-
-      const minInput = getInputByValue("0");
-      await user.click(minInput!);
-      await user.clear(minInput!);
-      await user.type(minInput!, "23"); // Should snap to 25
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "25");
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
         expect(onChange).toHaveBeenCalledWith(25, 100);
       });
+    });
+  });
+
+  describe("Input Editing", () => {
+    it("should allow editing min value input", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "30");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(30, 100);
+      });
+    });
+
+    it("should allow editing max value input", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[1]);
+      await user.type(inputs[1], "80");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(0, 80);
+      });
+    });
+
+    it("should apply value on blur", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "40");
+      await user.tab(); // blur
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(40, 100);
+      });
+    });
+
+    it("should clamp value to min/max boundaries", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+
+      // Try to set below min
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "-10");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(0, 100);
+      });
+
+      // Try to set above max
+      onChange.mockClear();
+      await user.clear(inputs[1]);
+      await user.type(inputs[1], "150");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(0, 100);
+      });
+    });
+
+    it("should respect step when editing", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          step={5}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "23"); // Should snap to 25
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(25, 100);
+      });
+    });
+
+    it("should disable inputs when disabledInputs is true", () => {
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          disabledInputs
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].disabled).toBe(true);
+      expect(inputs[1].disabled).toBe(true);
+    });
+
+    it("should disable inputs when disabled is true", () => {
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          disabled
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].disabled).toBe(true);
+      expect(inputs[1].disabled).toBe(true);
+    });
+  });
+
+  describe("AllowPush Behavior", () => {
+    it("should push max when min exceeds it (allowPush=true)", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={20}
+          maxValue={60}
+          min={0}
+          max={100}
+          showInputs
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "80");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(80, 80);
+      });
+    });
+
+    it("should push min when max goes below it (allowPush=true)", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={40}
+          maxValue={80}
+          min={0}
+          max={100}
+          showInputs
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[1]);
+      await user.type(inputs[1], "20");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(20, 20);
+      });
+    });
+
+    it("should clamp min to max when allowPush=false", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={20}
+          maxValue={60}
+          min={0}
+          max={100}
+          showInputs
+          allowPush={false}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "80");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(60, 60);
+      });
+    });
+
+    it("should clamp max to min when allowPush=false", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={40}
+          maxValue={80}
+          min={0}
+          max={100}
+          showInputs
+          allowPush={false}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[1]);
+      await user.type(inputs[1], "20");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(40, 40);
+      });
+    });
+  });
+
+  describe("Fixed Values Mode", () => {
+    const fixedValues = [0, 25, 50, 100, 250, 500, 750, 1000];
+
+    it("should render with fixed values", () => {
+      render(
+        <Range
+          minValue={0}
+          maxValue={1000}
+          fixedValues={fixedValues}
+          showInputs
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs).toHaveLength(2);
+      expect(inputs[0].value).toBe("0");
+      expect(inputs[1].value).toBe("1000");
+    });
+
+    it("should snap to closest fixed value when editing", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={1000}
+          fixedValues={fixedValues}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "60"); // Should snap to 50
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(50, 1000);
+      });
+    });
+
+    it("should snap to closest fixed value when typing higher value", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={1000}
+          fixedValues={fixedValues}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "300"); // Should snap to 250
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(250, 1000);
+      });
+    });
+
+    it("should clamp to array boundaries", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={1000}
+          fixedValues={fixedValues}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+
+      // Try value below minimum
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "-100");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(0, 1000);
+      });
+
+      // Try value above maximum
+      onChange.mockClear();
+      await user.clear(inputs[1]);
+      await user.type(inputs[1], "5000");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(0, 1000);
+      });
+    });
+
+    it("should work with formatLabel in fixed values mode", async () => {
+      const user = userEvent.setup();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={1000}
+          fixedValues={fixedValues}
+          showInputs
+          formatLabel={(val) => `€${val}`}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      // When not focused, should show formatted
+      expect(inputs[0].value).toBe("€0");
+      expect(inputs[1].value).toBe("€1000");
+
+      // When focused, should show raw value for editing
+      await user.click(inputs[0]);
+      await waitFor(() => {
+        expect(inputs[0].value).toBe("0");
+      });
+    });
+
+    it("should respect allowPush in fixed values mode", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={100}
+          maxValue={500}
+          fixedValues={fixedValues}
+          showInputs
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "800"); // Should snap to 750 and push max
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith(750, 750);
+      });
+    });
+
+    it("should clamp to other thumb in fixed values when allowPush=false", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={100}
+          maxValue={500}
+          fixedValues={fixedValues}
+          showInputs
+          allowPush={false}
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "800");
+      await user.keyboard("{Enter}");
+
+      await waitFor(() => {
+        // Should clamp to maxValue (500)
+        expect(onChange).toHaveBeenCalledWith(500, 500);
+      });
+    });
+  });
+
+  describe("Edge Cases", () => {
+    it("should handle min value equal to 0", () => {
+      render(<Range minValue={0} maxValue={10} min={0} max={10} showInputs />);
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].value).toBe("0");
+    });
+
+    it("should handle negative values", () => {
+      render(
+        <Range minValue={-10} maxValue={10} min={-10} max={10} showInputs />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].value).toBe("-10");
+      expect(inputs[1].value).toBe("10");
+    });
+
+    it("should handle decimal values with step", () => {
+      render(
+        <Range
+          minValue={1.5}
+          maxValue={3.5}
+          min={0}
+          max={5}
+          step={0.5}
+          showInputs
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].value).toBe("1.5");
+      expect(inputs[1].value).toBe("3.5");
+    });
+
+    it("should handle very large ranges", () => {
+      render(
+        <Range minValue={0} maxValue={10000} min={0} max={10000} showInputs />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].value).toBe("0");
+      expect(inputs[1].value).toBe("10000");
+    });
+
+    it("should handle invalid input gracefully", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      await user.clear(inputs[0]);
+      await user.type(inputs[0], "abc");
+      await user.keyboard("{Enter}");
+
+      // Should revert to previous value
+      await waitFor(() => {
+        expect(inputs[0].value).toBe("0");
+        expect(onChange).not.toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe("ThumbGap Feature", () => {
+    it("should render with thumbGap", () => {
+      render(
+        <Range minValue={50} maxValue={50} min={0} max={100} thumbGap={5} />
+      );
+
+      const container = screen.getByTestId("range-container");
+      expect(container).toBeDefined();
+    });
+
+    it("should maintain visual separation when values are equal", () => {
+      render(
+        <Range
+          minValue={50}
+          maxValue={50}
+          min={0}
+          max={100}
+          thumbGap={10}
+          showInputs
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      // Values should still be equal
+      expect(inputs[0].value).toBe("50");
+      expect(inputs[1].value).toBe("50");
+    });
+  });
+
+  describe("Disabled State", () => {
+    it("should disable all interactions when disabled=true", () => {
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          disabled
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+      expect(inputs[0].disabled).toBe(true);
+      expect(inputs[1].disabled).toBe(true);
+    });
+
+    it("should not call onChange when disabled", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          minValue={0}
+          maxValue={100}
+          min={0}
+          max={100}
+          showInputs
+          disabled
+          onChange={onChange}
+        />
+      );
+
+      const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
+
+      // Try to edit - should not work because disabled
+      await user.click(inputs[0]);
+
+      expect(onChange).not.toHaveBeenCalled();
     });
   });
 });

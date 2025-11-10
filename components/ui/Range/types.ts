@@ -1,33 +1,38 @@
-/**
- * Enum for range thumb types
- */
-export enum RangeThumbType {
-  Min = "min",
-  Max = "max",
+// Orientation type
+export type Orientation = "horizontal" | "vertical";
+
+// Thumb handle types
+export type ThumbHandle = "min" | "max";
+
+export interface ThumbProps {
+  id: string;
+  percentageX: number;
+  percentageY: number;
+  isDragging: boolean;
+  onMouseDown?: (e: React.MouseEvent) => void;
+  onTouchStart?: (e: React.TouchEvent) => void;
+}
+
+export interface RangeBarProps {
+  minPercentage: number;
+  maxPercentage: number;
+  orientation?: Orientation;
 }
 
 export interface RangeProps {
-  min: number;
-  max: number;
-  initialMinValue?: number;
-  initialMaxValue?: number;
-  fixedValues?: number[];
-  editable?: boolean;
-  onChange?: (min: number, max: number) => void;
-  formatLabel?: (value: number) => string;
+  min?: number;
+  max?: number;
+  minValue: number;
+  maxValue: number;
+  onChange?: (minValue: number, maxValue: number) => void;
+  orientation?: Orientation;
   step?: number;
-}
-
-export interface RangeThumbProps {
-  id: string;
-  type: RangeThumbType;
-  percentage: number;
-  isDragging: boolean;
-  onMouseDown: (e: React.MouseEvent<HTMLButtonElement>) => void;
-  onTouchStart: (e: React.TouchEvent<HTMLButtonElement>) => void;
-}
-
-export interface RangeState {
-  minIndex: number;
-  maxIndex: number;
+  disabled?: boolean;
+  className?: string;
+  allowPush?: boolean;
+  thumbGap?: number;
+  showInputs?: boolean;
+  disabledInputs?: boolean;
+  fixedValues?: number[];
+  formatLabel?: (value: number) => string;
 }

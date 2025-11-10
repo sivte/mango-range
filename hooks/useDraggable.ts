@@ -1,7 +1,9 @@
+"use client";
+
 import { useState, useCallback, useEffect, useRef } from "react";
 
 interface UseDraggableOptions<T extends string> {
-  onDragMove: (handle: T, clientX: number) => void;
+  onDragMove: (handle: T, clientX: number, clientY: number) => void;
   onDragEnd?: () => void;
 }
 
@@ -13,15 +15,19 @@ export function useDraggable<T extends string>({
   const touchIdentifiers = useRef<Map<number, T>>(new Map());
   const handleTouchMap = useRef<Map<T, number>>(new Map());
 
+  // Computed state
+  const dragging =
+    draggingHandles.size === 1 ? Array.from(draggingHandles)[0] : null;
+  const isMultiTouch = draggingHandles.size > 1;
+
   const handleMouseDown = useCallback(
     (handle: T) => (e: React.MouseEvent | React.TouchEvent) => {
       e.preventDefault();
       e.stopPropagation();
 
       if ("changedTouches" in e) {
-        // Touch event - only consider the first touch point
         if (handleTouchMap.current.has(handle)) {
-          return; // This handle is already being controlled by another finger
+          return;
         }
 
         const touch = e.changedTouches[0];
@@ -39,20 +45,19 @@ export function useDraggable<T extends string>({
       if (draggingHandles.size === 0) return;
 
       if ("touches" in e) {
-        e.preventDefault(); // Prevent scrolling while dragging
-        // Multi-touch support
+        e.preventDefault();
+
         for (let i = 0; i < e.touches.length; i++) {
           const touch = e.touches[i];
           const handle = touchIdentifiers.current.get(touch.identifier);
           if (handle && draggingHandles.has(handle)) {
-            onDragMove(handle, touch.clientX);
+            onDragMove(handle, touch.clientX, touch.clientY);
           }
         }
       } else {
-        // Mouse event - single handle
         const handle = Array.from(draggingHandles)[0];
         if (handle) {
-          onDragMove(handle, e.clientX);
+          onDragMove(handle, e.clientX, e.clientY);
         }
       }
     },
@@ -62,13 +67,14 @@ export function useDraggable<T extends string>({
   const handleMouseUp = useCallback(
     (e: MouseEvent | TouchEvent) => {
       if ("changedTouches" in e) {
-        // Touch end - remove specific touch
         for (let i = 0; i < e.changedTouches.length; i++) {
           const touch = e.changedTouches[i];
           const handle = touchIdentifiers.current.get(touch.identifier);
+
           if (handle) {
             touchIdentifiers.current.delete(touch.identifier);
-            handleTouchMap.current.delete(handle); // Liberar el handle
+            handleTouchMap.current.delete(handle);
+
             setDraggingHandles((prev) => {
               const next = new Set(prev);
               next.delete(handle);
@@ -77,7 +83,6 @@ export function useDraggable<T extends string>({
           }
         }
       } else {
-        // Mouse up - clear all
         setDraggingHandles(new Set());
         touchIdentifiers.current.clear();
         handleTouchMap.current.clear();
@@ -107,11 +112,6 @@ export function useDraggable<T extends string>({
       };
     }
   }, [draggingHandles.size, handleMouseMove, handleMouseUp]);
-
-  // Return first dragging handle for backward compatibility
-  const dragging =
-    draggingHandles.size > 0 ? Array.from(draggingHandles)[0] : null;
-  const isMultiTouch = draggingHandles.size > 1;
 
   return {
     dragging,

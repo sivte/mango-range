@@ -1,688 +1,504 @@
-"use client";
-
-import React, {
-  useRef,
-  useCallback,
-  useMemo,
-  useState,
-  useEffect,
-  startTransition,
-} from "react";
-import styles from "./Range.module.css";
+import { RangeProps } from "./types";
+import { RangeBar } from "./RangeBar";
+import { Thumb } from "./Thumb";
+import { NumericInput } from "@/components/ui/NumericInput/NumericInput";
 import { useDraggable } from "@/hooks/useDraggable";
-import { NumericInput } from "@sivte/ui";
-import type { RangeProps, RangeThumbProps, RangeState } from "./types";
-import { RangeThumbType } from "./types";
+import { useRef, useState, useEffect, useMemo, useCallback } from "react";
+import styles from "./Range.module.css";
 
 /**
- * RangeThumb component renders a draggable slider handle
- */
-const RangeThumb: React.FC<RangeThumbProps> = ({
-  id,
-  type,
-  percentage,
-  isDragging,
-  onMouseDown,
-  onTouchStart,
-}) => {
-  return (
-    <button
-      type="button"
-      id={id}
-      className={`${styles.handle} ${isDragging ? styles.dragging : ""}`}
-      style={{ left: `${percentage}%` }}
-      onMouseDown={onMouseDown}
-      onTouchStart={onTouchStart}
-      data-testid={`${type}-handle`}
-    />
-  );
-};
-
-/**
- * Calculate decimal precision from a step value
- * @param step - The step value to analyze
- * @returns Number of decimal places in the step
- */
-function getDecimalPrecision(step: number): number {
-  const stepStr = step.toString();
-  const decimalPart = stepStr.split(".")[1];
-  return decimalPart ? decimalPart.length : 0;
-}
-
-/**
- * Format a label with decimal handling
- * @param val - The value to format
- * @param step - The step value for decimal precision
- * @returns Formatted label string
- */
-function defaultFormatLabel(val: number, step: number) {
-  const decimals = getDecimalPrecision(step);
-  if (decimals > 0) return val.toFixed(decimals);
-  const rounded = Math.round(val);
-  return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2);
-}
-
-/**
- * Tolerance factor for floating point comparisons
- * Used to determine if values are "close enough" to be considered equal
- */
-const FLOATING_POINT_EPSILON_FACTOR = 1000;
-
-/**
- * Hook to manage range value calculations and conversions.
+ * Range component - A slider with two thumbs to select a range of values
  *
- * Handles both fixed value arrays and step-based continuous ranges.
+ * Range is a customizable dual-thumb range slider component for selecting a numeric interval.
  *
- * @param params - Configuration object
- * @param params.min - Minimum value of the range
- * @param params.max - Maximum value of the range
- * @param params.step - Step increment for continuous ranges
- * @param params.fixedValues - Optional array of fixed values (overrides step-based behavior)
- * @returns Object with calculation functions and metadata
+ * Supports both horizontal and vertical orientations, optional numeric input fields,
+ * fixed value steps, and pushable thumbs (where one thumb can push the other).
+ *
+ * @component
+ * @param {number} minProp - The minimum allowed value (if not using fixedValues).
+ * @param {number} maxProp - The maximum allowed value (if not using fixedValues).
+ * @param {number} minValue - The current minimum value selected.
+ * @param {number} maxValue - The current maximum value selected.
+ * @param {(min: number, max: number) => void} onChange - Callback fired when the range values change.
+ * @param {"horizontal" | "vertical"} [orientation="horizontal"] - Orientation of the slider.
+ * @param {number} [step=1] - Step size for value increments (ignored if fixedValues is provided).
+ * @param {boolean} [disabled=false] - Whether the slider and inputs are disabled.
+ * @param {string} [className] - Additional CSS class names for the container.
+ * @param {boolean} [allowPush=true] - If true, thumbs can push each other when overlapped.
+ * @param {number} [thumbGap=0] - Minimum gap between thumbs (in value units).
+ * @param {boolean} [showInputs=false] - Whether to show numeric input fields for min/max values.
+ * @param {boolean} [disabledInputs=false] - Whether the numeric input fields are disabled.
+ * @param {number[]} [fixedValues] - Optional array of allowed values (slider will snap to these).
+ * @param {(value: number) => string} [formatLabel] - Optional function to format input labels.
+ *
+ * @remarks
+ * - If `fixedValues` is provided, the slider will only allow selecting values from this array.
+ * - The component is fully controlled; you must manage `minValue` and `maxValue` state externally.
+ * - The `onChange` callback is called with the new values whenever the user interacts with the slider or inputs.
+ * - The component supports keyboard, mouse, and touch interactions.
  */
-function useRangeCalculations({
-  min,
-  max,
-  step,
+export const Range: React.FC<RangeProps> = ({
+  min: minProp,
+  max: maxProp,
+  minValue,
+  maxValue,
+  onChange,
+  orientation = "horizontal",
+  step: stepProp = 1,
+  disabled = false,
+  className,
+  allowPush = true,
+  thumbGap = 0,
+  showInputs = false,
+  disabledInputs = false,
   fixedValues,
-}: {
-  min: number;
-  max: number;
-  step: number;
-  fixedValues?: number[];
-}) {
-  // Calculate decimal precision based on step value
-  const decimalPrecision = useMemo(() => getDecimalPrecision(step), [step]);
-
-  const getValueAtIndex = useCallback(
-    (index: number): number => {
-      if (fixedValues) return fixedValues[index];
-
-      const rawValue = min + index * step;
-
-      // Clamp to max if exceeded
-      if (rawValue > max) return max;
-
-      // Round using scale factor to avoid floating point precision issues
-      const scale = Math.pow(10, decimalPrecision);
-      return Math.round(rawValue * scale) / scale;
-    },
-    [fixedValues, min, max, step, decimalPrecision]
-  );
-
-  // Calculate total number of available positions
-  const totalSteps = useMemo(() => {
-    if (fixedValues) return fixedValues.length;
-
-    // Calculate how many complete steps fit in the range
-    const range = max - min;
-    const completeSteps = Math.floor(range / step);
-
-    // Always include the starting position (min)
-    // Add 1 for each complete step
-    // Add 1 more if max is exactly on a step boundary
-    const epsilon = step / FLOATING_POINT_EPSILON_FACTOR;
-    const maxIsOnStep = Math.abs(min + completeSteps * step - max) < epsilon;
-
-    return maxIsOnStep ? completeSteps + 1 : completeSteps + 2;
-  }, [fixedValues, min, max, step]);
-
-  // Convert value to index (find closest position)
-  const getClosestIndex = useCallback(
-    (value: number): number => {
-      if (fixedValues) {
-        // For fixed values, search for closest match
-        let closestIndex = 0;
-        let minDiff = Math.abs(fixedValues[0] - value);
-
-        for (let i = 1; i < fixedValues.length; i++) {
-          const diff = Math.abs(fixedValues[i] - value);
-          if (diff < minDiff) {
-            minDiff = diff;
-            closestIndex = i;
-          }
-        }
-        return closestIndex;
-      }
-
-      // For step-based ranges, calculate directly
-      const stepsFromMin = Math.round((value - min) / step);
-      return Math.max(0, Math.min(totalSteps - 1, stepsFromMin));
-    },
-    [fixedValues, min, step, totalSteps]
-  );
-
-  // Create lookup map for fixed values
-  const fixedValuesMap = useMemo(() => {
-    if (!fixedValues) return null;
-
-    const map = new Map<number, number>();
-    fixedValues.forEach((value, index) => {
-      map.set(value, index);
-    });
-    return map;
+  formatLabel,
+}) => {
+  // Memoize sorted fixed values to avoid sorting on every render
+  const sortedFixedValues = useMemo(() => {
+    if (!fixedValues || fixedValues.length === 0) return null;
+    return [...fixedValues].sort((a, b) => a - b);
   }, [fixedValues]);
 
-  const getClosestValue = useCallback(
-    (value: number): number => {
-      const index = getClosestIndex(value);
-      return getValueAtIndex(index);
-    },
-    [getClosestIndex, getValueAtIndex]
-  );
+  // Calculate min/max from fixed values or props
+  const min = useMemo(() => {
+    return sortedFixedValues ? Math.min(...sortedFixedValues) : minProp ?? 0;
+  }, [sortedFixedValues, minProp]);
 
-  const getPercentage = useCallback(
-    (value: number): number => {
+  const max = useMemo(() => {
+    return sortedFixedValues ? Math.max(...sortedFixedValues) : maxProp ?? 100;
+  }, [sortedFixedValues, maxProp]);
+
+  const step = sortedFixedValues ? 1 : stepProp;
+
+  // Memoize decimal calculation
+  const decimals = useMemo(() => {
+    return step.toString().split(".")[1]?.length || 0;
+  }, [step]);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const minInputRef = useRef<HTMLInputElement | null>(null);
+  const maxInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Use editing state instead of duplicating value state
+  const [isEditingMin, setIsEditingMin] = useState(false);
+  const [isEditingMax, setIsEditingMax] = useState(false);
+  const [editingMinValue, setEditingMinValue] = useState("");
+  const [editingMaxValue, setEditingMaxValue] = useState("");
+
+  const minInputValue = isEditingMin ? editingMinValue : minValue.toString();
+  const maxInputValue = isEditingMax ? editingMaxValue : maxValue.toString();
+
+  const handleMinInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsEditingMin(true);
+    setEditingMinValue(e.target.value);
+  };
+
+  const handleMaxInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setIsEditingMax(true);
+    setEditingMaxValue(e.target.value);
+  };
+
+  // Memoize value conversion functions
+  const valueToPercentage = useCallback(
+    (value: number) => {
       return ((value - min) / (max - min)) * 100;
     },
     [min, max]
   );
 
-  return {
-    getValueAtIndex,
-    totalSteps,
-    getClosestIndex,
-    fixedValuesMap,
-    getClosestValue,
-    getPercentage,
-  };
-}
+  const percentageToValue = useCallback(
+    (percentage: number) => {
+      const rawValue = min + (percentage / 100) * (max - min);
 
-/**
- * Hook to manage the range state and value updates.
- *
- * Implements push behavior: when thumbs get too close, the other thumb
- * is automatically pushed to maintain minimum separation.
- *
- * @param params - Configuration object
- * @param params.initialMinValue - Initial minimum value (defaults to range min)
- * @param params.initialMaxValue - Initial maximum value (defaults to range max)
- * @param params.onChange - Callback fired when values change
- * @param params.getValueAtIndex - Function to convert index to value
- * @param params.getClosestIndex - Function to convert value to index
- * @param params.totalSteps - Total number of discrete positions
- * @returns State object and update functions
- */
-function useRangeState({
-  initialMinValue,
-  initialMaxValue,
-  onChange,
-  getValueAtIndex,
-  getClosestIndex,
-  totalSteps,
-}: {
-  initialMinValue?: number;
-  initialMaxValue?: number;
-  onChange?: (min: number, max: number) => void;
-  getValueAtIndex: (index: number) => number;
-  getClosestIndex: (value: number) => number;
-  totalSteps: number;
-}) {
-  const minIndexGap = 1; // Minimum separation between thumbs
+      if (sortedFixedValues) {
+        return sortedFixedValues.reduce((prev, curr) => {
+          return Math.abs(curr - rawValue) < Math.abs(prev - rawValue)
+            ? curr
+            : prev;
+        });
+      }
 
-  // Initialize state with indices
-  const [state, setState] = useState<RangeState>(() => {
-    const minIdx =
-      initialMinValue !== undefined ? getClosestIndex(initialMinValue) : 0;
-    const maxIdx =
-      initialMaxValue !== undefined
-        ? getClosestIndex(initialMaxValue)
-        : totalSteps - 1;
-
-    return { minIndex: minIdx, maxIndex: maxIdx };
-  });
-
-  // Store onChange in ref to avoid recreating updateValue
-  const onChangeRef = useRef(onChange);
-  useEffect(() => {
-    onChangeRef.current = onChange;
-  }, [onChange]);
-
-  // Core update logic with push behavior
-  const updateValue = useCallback(
-    (type: RangeThumbType, value: number) => {
-      setState((current) => {
-        const isMin = type === RangeThumbType.Min;
-        const targetIndex = getClosestIndex(value);
-        const clampedIndex = Math.max(0, Math.min(totalSteps - 1, targetIndex));
-
-        let newMinIndex = isMin ? clampedIndex : current.minIndex;
-        let newMaxIndex = isMin ? current.maxIndex : clampedIndex;
-
-        const indexDiff = newMaxIndex - newMinIndex;
-
-        // Push logic: maintain minimum gap between thumbs
-        if (indexDiff < minIndexGap) {
-          if (isMin) {
-            const desiredMaxIndex = newMinIndex + minIndexGap;
-            if (desiredMaxIndex < totalSteps) {
-              newMaxIndex = desiredMaxIndex;
-            } else {
-              newMinIndex = Math.max(0, totalSteps - 1 - minIndexGap);
-              newMaxIndex = totalSteps - 1;
-            }
-          } else {
-            const desiredMinIndex = newMaxIndex - minIndexGap;
-            if (desiredMinIndex >= 0) {
-              newMinIndex = desiredMinIndex;
-            } else {
-              newMinIndex = 0;
-              newMaxIndex = Math.min(totalSteps - 1, minIndexGap);
-            }
-          }
-        }
-
-        if (
-          newMinIndex === current.minIndex &&
-          newMaxIndex === current.maxIndex
-        ) {
-          return current;
-        }
-
-        const newMinValue = getValueAtIndex(newMinIndex);
-        const newMaxValue = getValueAtIndex(newMaxIndex);
-        onChangeRef.current?.(newMinValue, newMaxValue);
-
-        return { minIndex: newMinIndex, maxIndex: newMaxIndex };
-      });
+      const steppedValue = Math.round(rawValue / step) * step;
+      const roundedValue = parseFloat(steppedValue.toFixed(decimals));
+      return Math.max(min, Math.min(max, roundedValue));
     },
-    [getClosestIndex, getValueAtIndex, totalSteps]
+    [min, max, step, decimals, sortedFixedValues]
   );
 
-  const updateMinValue = useCallback(
-    (value: number) => updateValue(RangeThumbType.Min, value),
-    [updateValue]
-  );
+  const applyMinValue = useCallback(() => {
+    const inputValue = isEditingMin ? editingMinValue : minValue.toString();
+    const numValue = parseFloat(inputValue);
 
-  const updateMaxValue = useCallback(
-    (value: number) => updateValue(RangeThumbType.Max, value),
-    [updateValue]
-  );
+    if (!isNaN(numValue)) {
+      let finalMinValue: number;
+      let finalMaxValue = maxValue;
 
-  return {
-    state,
-    updateMinValue,
-    updateMaxValue,
-  };
-}
-
-/**
- * Hook to manage editable label state and interactions.
- *
- * Handles clicking labels to edit values, input validation,
- * and cancelling edits when dragging starts.
- *
- * @param params - Configuration object
- * @param params.editable - Whether labels are editable
- * @param params.fixedValues - Fixed values array (disables editing if present)
- * @param params.updateMinValue - Function to update minimum value
- * @param params.updateMaxValue - Function to update maximum value
- * @param params.dragging - Current dragging state (cancels editing when drag starts)
- * @returns State and handlers for editable inputs
- */
-function useEditableLabel({
-  editable,
-  fixedValues,
-  updateMinValue,
-  updateMaxValue,
-  dragging,
-}: {
-  editable: boolean;
-  fixedValues?: number[];
-  updateMinValue: (value: number) => void;
-  updateMaxValue: (value: number) => void;
-  dragging: RangeThumbType | null;
-}) {
-  const [editingLabel, setEditingLabel] = useState<RangeThumbType | null>(null);
-  const [tempValue, setTempValue] = useState("");
-  const minInputRef = useRef<HTMLInputElement>(null);
-  const maxInputRef = useRef<HTMLInputElement>(null);
-  const previousDraggingRef = useRef<typeof dragging>(null);
-
-  // Focus input when entering edit mode
-  useEffect(() => {
-    const targetRef =
-      editingLabel === RangeThumbType.Min
-        ? minInputRef
-        : editingLabel === RangeThumbType.Max
-        ? maxInputRef
-        : null;
-    if (targetRef?.current) {
-      targetRef.current.focus();
-      targetRef.current.select();
-    }
-  }, [editingLabel]);
-
-  // Cancel editing when dragging starts
-  useEffect(() => {
-    if (dragging && !previousDraggingRef.current) {
-      const activeElement = document.activeElement;
-      if (
-        activeElement === minInputRef.current ||
-        activeElement === maxInputRef.current
-      ) {
-        (activeElement as HTMLElement).blur();
-      }
-
-      startTransition(() => {
-        setEditingLabel(null);
-        setTempValue("");
-      });
-    }
-    previousDraggingRef.current = dragging;
-  }, [dragging]);
-
-  const handleLabelClick = (type: RangeThumbType) => {
-    if (!editable || fixedValues) return;
-    setEditingLabel(type);
-  };
-
-  const commitEdit = useCallback(() => {
-    if (!tempValue || tempValue === "-" || tempValue === ".") {
-      setEditingLabel(null);
-      setTempValue("");
-      return;
-    }
-
-    const numValue = parseFloat(tempValue);
-
-    if (!isNaN(numValue) && isFinite(numValue)) {
-      if (editingLabel === RangeThumbType.Min) {
-        updateMinValue(numValue);
-      } else if (editingLabel === RangeThumbType.Max) {
-        updateMaxValue(numValue);
-      }
-    }
-
-    setEditingLabel(null);
-    setTempValue("");
-  }, [tempValue, editingLabel, updateMinValue, updateMaxValue]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
-    if (inputValue === "" || /^-?\d*\.?\d*$/.test(inputValue)) {
-      setTempValue(inputValue);
-    }
-  };
-
-  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      commitEdit();
-      e.currentTarget.blur();
-    } else if (e.key === "Escape") {
-      setEditingLabel(null);
-      setTempValue("");
-    }
-  };
-
-  return {
-    editingLabel,
-    tempValue,
-    minInputRef,
-    maxInputRef,
-    handleLabelClick,
-    commitEdit,
-    handleInputChange,
-    handleInputKeyDown,
-  };
-}
-
-/**
- * Range component - A dual-thumb slider with support for:
- * - Fixed values or step-based ranges
- * - Editable numeric inputs
- * - Drag and touch interactions
- * - Push behavior when thumbs get close
- *
- * @example
- * ```tsx
- * <Range min={0} max={100} step={1} onChange={(min, max) => console.log(min, max)} />
- * <Range fixedValues={[1.99, 5.99, 15.99, 30.99]} editable={false} />
- * ```
- */
-export const Range: React.FC<RangeProps> = ({
-  min,
-  max,
-  initialMinValue,
-  initialMaxValue,
-  fixedValues,
-  editable = true,
-  onChange,
-  formatLabel,
-  step = 1,
-}) => {
-  const rangeRef = useRef<HTMLDivElement>(null);
-
-  // Validate props in development
-  if (process.env.NODE_ENV !== "production") {
-    if (min >= max) {
-      console.error("[Range] Invalid props: min must be less than max", {
-        min,
-        max,
-      });
-    }
-    if (step <= 0) {
-      console.error("[Range] Invalid props: step must be positive", { step });
-    }
-    if (fixedValues && fixedValues.length > 0) {
-      const isSorted = fixedValues.every(
-        (val, i, arr) => i === 0 || arr[i - 1] <= val
-      );
-      if (!isSorted) {
-        console.error(
-          "[Range] Invalid props: fixedValues must be sorted in ascending order",
-          { fixedValues }
+      if (sortedFixedValues) {
+        // Clamp to array boundaries first
+        const clampedValue = Math.max(
+          sortedFixedValues[0],
+          Math.min(sortedFixedValues[sortedFixedValues.length - 1], numValue)
         );
+
+        // Find the closest value
+        finalMinValue = sortedFixedValues.reduce((prev, curr) => {
+          return Math.abs(curr - clampedValue) < Math.abs(prev - clampedValue)
+            ? curr
+            : prev;
+        });
+      } else {
+        const clampedValue = Math.max(min, Math.min(max, numValue));
+        const steppedValue = Math.round(clampedValue / step) * step;
+        finalMinValue = parseFloat(steppedValue.toFixed(decimals));
       }
-      if (fixedValues[0] < min || fixedValues[fixedValues.length - 1] > max) {
-        console.error(
-          "[Range] Invalid props: fixedValues must be within [min, max] range",
-          { min, max, fixedValues }
-        );
+
+      // Apply push/boundary logic
+      if (allowPush) {
+        if (finalMinValue > finalMaxValue) {
+          finalMaxValue = finalMinValue;
+        }
+      } else {
+        if (finalMinValue > finalMaxValue) {
+          finalMinValue = finalMaxValue;
+        }
       }
+
+      setIsEditingMin(false);
+
+      onChange?.(finalMinValue, finalMaxValue);
+    } else {
+      setIsEditingMin(false);
     }
-  }
-
-  const labelFormatter =
-    formatLabel || ((val: number) => defaultFormatLabel(val, step));
-
-  // Initialize range calculations (handles both fixed and step-based modes)
-  const {
-    getValueAtIndex,
-    totalSteps,
-    getClosestIndex,
-    fixedValuesMap,
-    getClosestValue,
-    getPercentage,
-  } = useRangeCalculations({ min, max, step, fixedValues });
-
-  // Initialize range state management
-  const { state, updateMinValue, updateMaxValue } = useRangeState({
-    initialMinValue,
-    initialMaxValue,
+  }, [
+    isEditingMin,
+    editingMinValue,
+    minValue,
+    maxValue,
+    sortedFixedValues,
+    min,
+    max,
+    step,
+    decimals,
+    allowPush,
     onChange,
-    getValueAtIndex,
-    getClosestIndex,
-    totalSteps,
-  });
+  ]);
 
-  // Derive current values from indices
-  const minValue = getValueAtIndex(state.minIndex);
-  const maxValue = getValueAtIndex(state.maxIndex);
+  const applyMaxValue = useCallback(() => {
+    const inputValue = isEditingMax ? editingMaxValue : maxValue.toString();
+    const numValue = parseFloat(inputValue);
 
-  // Convert mouse/touch position to value
-  const getValueFromPosition = useCallback(
-    (clientX: number): number => {
-      if (!rangeRef.current) return min;
+    if (!isNaN(numValue)) {
+      let finalMaxValue: number;
+      let finalMinValue = minValue;
 
-      const rect = rangeRef.current.getBoundingClientRect();
-      const percentage = Math.max(
+      if (sortedFixedValues) {
+        // Clamp to array boundaries first
+        const clampedValue = Math.max(
+          sortedFixedValues[0],
+          Math.min(sortedFixedValues[sortedFixedValues.length - 1], numValue)
+        );
+
+        // Find the closest value
+        finalMaxValue = sortedFixedValues.reduce((prev, curr) => {
+          return Math.abs(curr - clampedValue) < Math.abs(prev - clampedValue)
+            ? curr
+            : prev;
+        });
+      } else {
+        const clampedValue = Math.max(min, Math.min(max, numValue));
+        const steppedValue = Math.round(clampedValue / step) * step;
+        finalMaxValue = parseFloat(steppedValue.toFixed(decimals));
+      }
+
+      // Apply push/boundary logic
+      if (allowPush) {
+        if (finalMaxValue < finalMinValue) {
+          finalMinValue = finalMaxValue;
+        }
+      } else {
+        if (finalMaxValue < finalMinValue) {
+          finalMaxValue = finalMinValue;
+        }
+      }
+
+      setIsEditingMax(false);
+      onChange?.(finalMinValue, finalMaxValue);
+    } else {
+      setIsEditingMax(false);
+    }
+  }, [
+    isEditingMax,
+    editingMaxValue,
+    maxValue,
+    minValue,
+    sortedFixedValues,
+    min,
+    max,
+    step,
+    decimals,
+    allowPush,
+    onChange,
+  ]);
+
+  const handleMinInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      applyMinValue();
+      minInputRef.current?.blur();
+    }
+  };
+
+  const handleMaxInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      applyMaxValue();
+      maxInputRef.current?.blur();
+    }
+  };
+
+  // Memoize percentage calculations
+  const minPercentage = valueToPercentage(minValue);
+  const maxPercentage = valueToPercentage(maxValue);
+
+  const percentageDiff = maxPercentage - minPercentage;
+  const thumbGapPercentage = (thumbGap / (max - min)) * 100;
+
+  // Memoize visual percentages calculation
+  const { minVisualPercentage, maxVisualPercentage } = useMemo(() => {
+    let minVis = minPercentage;
+    let maxVis = maxPercentage;
+
+    if (thumbGap > 0 && percentageDiff < thumbGapPercentage) {
+      const midPoint = (minPercentage + maxPercentage) / 2;
+      const halfGap = thumbGapPercentage / 2;
+
+      minVis = midPoint - halfGap;
+      maxVis = midPoint + halfGap;
+
+      if (minVis < 0) {
+        minVis = 0;
+        maxVis = thumbGapPercentage;
+      } else if (maxVis > 100) {
+        maxVis = 100;
+        minVis = 100 - thumbGapPercentage;
+      }
+    }
+
+    return { minVisualPercentage: minVis, maxVisualPercentage: maxVis };
+  }, [
+    minPercentage,
+    maxPercentage,
+    thumbGap,
+    percentageDiff,
+    thumbGapPercentage,
+  ]);
+
+  const handleDragMove = (
+    handle: "min" | "max",
+    clientX: number,
+    clientY: number
+  ) => {
+    if (!containerRef.current || disabled) return;
+
+    const rect = containerRef.current.getBoundingClientRect();
+
+    let newPercentage: number;
+
+    if (orientation === "horizontal") {
+      newPercentage = Math.max(
         0,
         Math.min(100, ((clientX - rect.left) / rect.width) * 100)
       );
-      const value = min + (percentage / 100) * (max - min);
-
-      return fixedValues ? getClosestValue(value) : value;
-    },
-    [min, max, fixedValues, getClosestValue]
-  );
-
-  // Track multi-touch state and current values
-  const isMultiTouchRef = useRef(false);
-  const currentValuesRef = useRef({ min: minValue, max: maxValue });
-
-  useEffect(() => {
-    currentValuesRef.current = { min: minValue, max: maxValue };
-  }, [minValue, maxValue]);
-
-  // Handle drag movement with multi-touch prevention logic
-  const handleDragMove = useCallback(
-    (handle: RangeThumbType, clientX: number) => {
-      const newValue = getValueFromPosition(clientX);
-      const { min: currentMin, max: currentMax } = currentValuesRef.current;
-
-      let clampedValue = newValue;
-      const isMin = handle === RangeThumbType.Min;
-
-      // Prevent thumbs from crossing during multi-touch
-      if (isMultiTouchRef.current && fixedValues && fixedValuesMap) {
-        const otherValue = isMin ? currentMax : currentMin;
-        const otherIndex = fixedValuesMap.get(otherValue) ?? 0;
-        const allowedIndex = isMin
-          ? Math.max(0, otherIndex - 1)
-          : Math.min(fixedValues.length - 1, otherIndex + 1);
-        const allowedValue = fixedValues[allowedIndex];
-        clampedValue = isMin
-          ? Math.min(newValue, allowedValue)
-          : Math.max(newValue, allowedValue);
-      } else if (isMultiTouchRef.current) {
-        clampedValue = isMin
-          ? Math.min(newValue, currentMax)
-          : Math.max(newValue, currentMin);
-      }
-
-      if (isMin) {
-        updateMinValue(clampedValue);
-      } else {
-        updateMaxValue(clampedValue);
-      }
-    },
-    [
-      getValueFromPosition,
-      updateMinValue,
-      updateMaxValue,
-      fixedValues,
-      fixedValuesMap,
-    ]
-  );
-
-  // Initialize draggable behavior
-  const { dragging, isMultiTouch, handleMouseDown } =
-    useDraggable<RangeThumbType>({
-      onDragMove: handleDragMove,
-    });
-
-  useEffect(() => {
-    isMultiTouchRef.current = isMultiTouch;
-  }, [isMultiTouch]);
-
-  // Initialize editable label behavior
-  const {
-    editingLabel,
-    tempValue,
-    minInputRef,
-    maxInputRef,
-    handleLabelClick,
-    commitEdit,
-    handleInputChange,
-    handleInputKeyDown,
-  } = useEditableLabel({
-    editable,
-    fixedValues,
-    updateMinValue,
-    updateMaxValue,
-    dragging,
-  });
-
-  // Calculate visual percentages for thumbs
-  const minPercentage = getPercentage(minValue);
-  const maxPercentage = getPercentage(maxValue);
-
-  // Adjust thumb positions to prevent visual overlap
-  const minVisualSeparation = 3;
-  const { min: adjustedMin, max: adjustedMax } = useMemo(() => {
-    const diff = maxPercentage - minPercentage;
-
-    if (diff >= minVisualSeparation || diff <= 0) {
-      return { min: minPercentage, max: maxPercentage };
+    } else {
+      newPercentage = Math.max(
+        0,
+        Math.min(100, 100 - ((clientY - rect.top) / rect.height) * 100)
+      );
     }
 
-    return {
-      min: Math.max(0, maxPercentage - minVisualSeparation),
-      max: Math.min(100, minPercentage + minVisualSeparation),
-    };
-  }, [minPercentage, maxPercentage]);
+    const newValue = percentageToValue(newPercentage);
 
-  // Render component
-  return (
-    <div className={styles.container}>
-      <div className={styles.labelsContainer}>
-        {([RangeThumbType.Min, RangeThumbType.Max] as const).map((type) => {
-          const value = type === RangeThumbType.Min ? minValue : maxValue;
-          const inputRef =
-            type === RangeThumbType.Min ? minInputRef : maxInputRef;
-          const isEditing = editingLabel === type;
-          const isInputEditable = editable && !fixedValues;
+    const bothDragging = draggingHandles.size === 2;
+    const isMinDragging = draggingHandles.has("min");
+    const isMaxDragging = draggingHandles.has("max");
 
-          return (
-            <NumericInput
-              key={type}
-              id={`range-${type}-input`}
-              value={isEditing ? tempValue : labelFormatter(value)}
-              onChange={isEditing ? handleInputChange : undefined}
-              onBlur={isEditing ? commitEdit : undefined}
-              onKeyDown={isEditing ? handleInputKeyDown : undefined}
-              onFocus={
-                isInputEditable && !isEditing
-                  ? () => handleLabelClick(type)
-                  : undefined
-              }
-              onClick={
-                isInputEditable ? () => handleLabelClick(type) : undefined
-              }
-              inputRef={inputRef}
-              readOnly={!editable || !!fixedValues}
-            />
-          );
-        })}
-      </div>
+    if (handle === "min") {
+      if (bothDragging && newValue > maxValue) {
+        return;
+      }
 
-      <div className={styles.rangeContainer} ref={rangeRef}>
-        <span className={styles.track} />
-        <span
-          className={styles.activeTrack}
-          style={{
-            left: `${adjustedMin}%`,
-            width: `${adjustedMax - adjustedMin}%`,
-          }}
+      if (!allowPush && !isMaxDragging && newValue >= maxValue) {
+        if (maxValue !== minValue) {
+          onChange?.(maxValue, maxValue);
+        }
+        return;
+      }
+
+      if (allowPush && !isMaxDragging && newValue > maxValue) {
+        const pushedMaxValue = newValue;
+        if (pushedMaxValue !== maxValue || newValue !== minValue) {
+          onChange?.(newValue, pushedMaxValue);
+        }
+      } else {
+        const adjustedValue = Math.min(newValue, maxValue);
+        if (adjustedValue !== minValue) {
+          onChange?.(adjustedValue, maxValue);
+        }
+      }
+    } else {
+      if (bothDragging && newValue < minValue) {
+        return;
+      }
+
+      if (!allowPush && !isMinDragging && newValue <= minValue) {
+        if (minValue !== maxValue) {
+          onChange?.(minValue, minValue);
+        }
+        return;
+      }
+
+      if (allowPush && !isMinDragging && newValue < minValue) {
+        const pushedMinValue = newValue;
+        if (pushedMinValue !== minValue || newValue !== maxValue) {
+          onChange?.(pushedMinValue, newValue);
+        }
+      } else {
+        const adjustedValue = Math.max(newValue, minValue);
+        if (adjustedValue !== maxValue) {
+          onChange?.(minValue, adjustedValue);
+        }
+      }
+    }
+  };
+
+  const { dragging, handleMouseDown, draggingHandles } = useDraggable<
+    "min" | "max"
+  >({
+    onDragMove: handleDragMove,
+  });
+
+  useEffect(() => {
+    if (showInputs && (dragging !== null || draggingHandles.size > 0)) {
+      minInputRef.current?.blur();
+      maxInputRef.current?.blur();
+    }
+  }, [dragging, draggingHandles.size, showInputs]);
+
+  if (!showInputs) {
+    return (
+      <div
+        ref={containerRef}
+        className={`${styles.container} ${
+          orientation === "vertical" ? styles.vertical : styles.horizontal
+        } ${disabled ? styles.disabled : ""} ${className || ""}`}
+        data-testid="range-container"
+      >
+        <RangeBar
+          minPercentage={minVisualPercentage}
+          maxPercentage={maxVisualPercentage}
+          orientation={orientation}
         />
 
-        {(
-          [
-            { type: RangeThumbType.Min, percentage: adjustedMin },
-            { type: RangeThumbType.Max, percentage: adjustedMax },
-          ] as const
-        ).map(({ type, percentage }) => (
-          <RangeThumb
-            key={type}
-            id={`range-${type}-handle`}
-            type={type}
-            percentage={percentage}
-            isDragging={dragging === type}
-            onMouseDown={handleMouseDown(type)}
-            onTouchStart={handleMouseDown(type)}
+        <Thumb
+          id="range-thumb-min"
+          percentageX={orientation === "horizontal" ? minVisualPercentage : 50}
+          percentageY={
+            orientation === "horizontal" ? 50 : 100 - minVisualPercentage
+          }
+          isDragging={dragging === "min"}
+          onMouseDown={disabled ? undefined : handleMouseDown("min")}
+          onTouchStart={disabled ? undefined : handleMouseDown("min")}
+        />
+
+        <Thumb
+          id="range-thumb-max"
+          percentageX={orientation === "horizontal" ? maxVisualPercentage : 50}
+          percentageY={
+            orientation === "horizontal" ? 50 : 100 - maxVisualPercentage
+          }
+          isDragging={dragging === "max"}
+          onMouseDown={disabled ? undefined : handleMouseDown("max")}
+          onTouchStart={disabled ? undefined : handleMouseDown("max")}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className={`${styles.wrapper} ${
+        orientation === "vertical"
+          ? styles.wrapperVertical
+          : styles.wrapperHorizontal
+      }`}
+    >
+      <div
+        className={`${styles.inputsContainer} ${
+          orientation === "vertical"
+            ? styles.inputsContainerVertical
+            : styles.inputsContainerHorizontal
+        }`}
+      >
+        <div className={`${styles.inputWrapper} ${styles.inputWrapperLeft}`}>
+          <NumericInput
+            inputRef={minInputRef}
+            value={minInputValue}
+            onChange={handleMinInputChange}
+            onBlur={applyMinValue}
+            onKeyDown={handleMinInputKeyDown}
+            disabled={disabled || disabledInputs}
+            id="range-min-input"
+            formatLabel={formatLabel}
           />
-        ))}
+        </div>
+
+        <div className={`${styles.inputWrapper} ${styles.inputWrapperRight}`}>
+          <NumericInput
+            inputRef={maxInputRef}
+            value={maxInputValue}
+            onChange={handleMaxInputChange}
+            onBlur={applyMaxValue}
+            onKeyDown={handleMaxInputKeyDown}
+            disabled={disabled || disabledInputs}
+            id="range-max-input"
+            formatLabel={formatLabel}
+          />
+        </div>
+      </div>
+
+      <div
+        ref={containerRef}
+        className={`${styles.container} ${
+          orientation === "vertical" ? styles.vertical : styles.horizontal
+        } ${disabled ? styles.disabled : ""} ${className || ""}`}
+        data-testid="range-container"
+      >
+        <RangeBar
+          minPercentage={minVisualPercentage}
+          maxPercentage={maxVisualPercentage}
+          orientation={orientation}
+        />
+
+        <Thumb
+          id="range-thumb-min"
+          percentageX={orientation === "horizontal" ? minVisualPercentage : 50}
+          percentageY={
+            orientation === "horizontal" ? 50 : 100 - minVisualPercentage
+          }
+          isDragging={dragging === "min"}
+          onMouseDown={disabled ? undefined : handleMouseDown("min")}
+          onTouchStart={disabled ? undefined : handleMouseDown("min")}
+        />
+
+        <Thumb
+          id="range-thumb-max"
+          percentageX={orientation === "horizontal" ? maxVisualPercentage : 50}
+          percentageY={
+            orientation === "horizontal" ? 50 : 100 - maxVisualPercentage
+          }
+          isDragging={dragging === "max"}
+          onMouseDown={disabled ? undefined : handleMouseDown("max")}
+          onTouchStart={disabled ? undefined : handleMouseDown("max")}
+        />
       </div>
     </div>
   );

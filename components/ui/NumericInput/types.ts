@@ -9,4 +9,5 @@ export interface NumericInputProps {
   disabled?: boolean;
   readOnly?: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  formatLabel?: (value: number) => string;
 }

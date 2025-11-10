@@ -1,2 +1,2 @@
 export { Range } from "./Range";
-export type { RangeProps } from "./types";
+export type { RangeProps, Orientation, ThumbHandle } from "./types";

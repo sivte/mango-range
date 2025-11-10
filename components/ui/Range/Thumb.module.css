@@ -1,0 +1,54 @@
+.handle {
+  appearance: none;
+  border: none;
+  background-color: transparent;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  cursor: grab;
+  transition: none;
+  z-index: 2;
+  will-change: left, top;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.handle::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background-color: var(--range-thumb, #000);
+  border-radius: 50%;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.handle:hover::after {
+  transform: scale(1.3);
+}
+
+.handle.dragging {
+  cursor: grabbing;
+  z-index: 3;
+}
+
+.handle.dragging::after {
+  transform: scale(1.35);
+  transition: transform 0.05s ease-out;
+}
+
+.handle:focus {
+  outline: none;
+  z-index: 3;
+}
+
+.handle:active::after {
+  transform: scale(1.25);
+}
