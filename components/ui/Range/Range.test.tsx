@@ -24,7 +24,7 @@ describe("Range2 Component", () => {
 
   describe("Rendering", () => {
     it("should render with required props (controlled)", () => {
-      render(<Range minValue={0} maxValue={100} min={0} max={100} />);
+      render(<Range defaultValue={[0, 100]} min={0} max={100} />);
 
       const container = screen.getByTestId("range-container");
       expect(container).toBeDefined();
@@ -32,7 +32,7 @@ describe("Range2 Component", () => {
 
     it("should render with default orientation (horizontal)", () => {
       const { container } = render(
-        <Range minValue={0} maxValue={100} min={0} max={100} />
+        <Range defaultValue={[0, 100]} min={0} max={100} />
       );
 
       const rangeContainer = container.querySelector(
@@ -44,8 +44,7 @@ describe("Range2 Component", () => {
     it("should render in vertical orientation", () => {
       const { container } = render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           orientation="vertical"
@@ -60,7 +59,7 @@ describe("Range2 Component", () => {
 
     it("should render inputs when showInputs is true", () => {
       render(
-        <Range minValue={25} maxValue={75} min={0} max={100} showInputs />
+        <Range defaultValue={[25, 75]} min={0} max={100} showInputs />
       );
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
@@ -70,7 +69,7 @@ describe("Range2 Component", () => {
     });
 
     it("should not render inputs when showInputs is false", () => {
-      render(<Range minValue={25} maxValue={75} min={0} max={100} />);
+      render(<Range defaultValue={[25, 75]} min={0} max={100} />);
 
       const inputs = screen.queryAllByRole("textbox");
       expect(inputs).toHaveLength(0);
@@ -79,8 +78,7 @@ describe("Range2 Component", () => {
     it("should render with custom format label", () => {
       render(
         <Range
-          minValue={10}
-          maxValue={90}
+          defaultValue={[10, 90]}
           min={0}
           max={100}
           showInputs
@@ -98,7 +96,7 @@ describe("Range2 Component", () => {
   describe("Controlled Component Behavior", () => {
     it("should update when props change", () => {
       const { rerender } = render(
-        <Range minValue={0} maxValue={100} min={0} max={100} showInputs />
+        <Range value={[0, 100]} min={0} max={100} showInputs />
       );
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
@@ -107,7 +105,7 @@ describe("Range2 Component", () => {
 
       // Update props
       rerender(
-        <Range minValue={25} maxValue={75} min={0} max={100} showInputs />
+        <Range value={[25, 75]} min={0} max={100} showInputs />
       );
 
       const updatedInputs = screen.getAllByRole(
@@ -123,8 +121,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -138,7 +135,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(25, 100);
+        expect(onChange).toHaveBeenCalledWith([25, 100]);
       });
     });
   });
@@ -150,8 +147,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -165,7 +161,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(30, 100);
+        expect(onChange).toHaveBeenCalledWith([30, 100]);
       });
     });
 
@@ -175,8 +171,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -190,7 +185,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(0, 80);
+        expect(onChange).toHaveBeenCalledWith([0, 80]);
       });
     });
 
@@ -200,8 +195,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -215,7 +209,7 @@ describe("Range2 Component", () => {
       await user.tab(); // blur
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(40, 100);
+        expect(onChange).toHaveBeenCalledWith([40, 100]);
       });
     });
 
@@ -225,8 +219,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -242,7 +235,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(0, 100);
+        expect(onChange).toHaveBeenCalledWith([0, 100]);
       });
 
       // Try to set above max
@@ -252,7 +245,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(0, 100);
+        expect(onChange).toHaveBeenCalledWith([0, 100]);
       });
     });
 
@@ -262,8 +255,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           step={5}
@@ -278,15 +270,14 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(25, 100);
+        expect(onChange).toHaveBeenCalledWith([25, 100]);
       });
     });
 
     it("should disable inputs when disabledInputs is true", () => {
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -302,8 +293,7 @@ describe("Range2 Component", () => {
     it("should disable inputs when disabled is true", () => {
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -324,8 +314,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={20}
-          maxValue={60}
+          defaultValue={[20, 60]}
           min={0}
           max={100}
           showInputs
@@ -340,7 +329,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(80, 80);
+        expect(onChange).toHaveBeenCalledWith([80, 80]);
       });
     });
 
@@ -350,8 +339,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={40}
-          maxValue={80}
+          defaultValue={[40, 80]}
           min={0}
           max={100}
           showInputs
@@ -366,7 +354,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(20, 20);
+        expect(onChange).toHaveBeenCalledWith([20, 20]);
       });
     });
 
@@ -376,8 +364,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={20}
-          maxValue={60}
+          defaultValue={[20, 60]}
           min={0}
           max={100}
           showInputs
@@ -392,7 +379,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(60, 60);
+        expect(onChange).toHaveBeenCalledWith([60, 60]);
       });
     });
 
@@ -402,8 +389,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={40}
-          maxValue={80}
+          defaultValue={[40, 80]}
           min={0}
           max={100}
           showInputs
@@ -418,7 +404,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(40, 40);
+        expect(onChange).toHaveBeenCalledWith([40, 40]);
       });
     });
   });
@@ -429,8 +415,7 @@ describe("Range2 Component", () => {
     it("should render with fixed values", () => {
       render(
         <Range
-          minValue={0}
-          maxValue={1000}
+          defaultValue={[0, 1000]}
           fixedValues={fixedValues}
           showInputs
         />
@@ -448,8 +433,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={1000}
+          defaultValue={[0, 1000]}
           fixedValues={fixedValues}
           showInputs
           onChange={onChange}
@@ -462,7 +446,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(50, 1000);
+        expect(onChange).toHaveBeenCalledWith([50, 1000]);
       });
     });
 
@@ -472,8 +456,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={1000}
+          defaultValue={[0, 1000]}
           fixedValues={fixedValues}
           showInputs
           onChange={onChange}
@@ -486,7 +469,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(250, 1000);
+        expect(onChange).toHaveBeenCalledWith([250, 1000]);
       });
     });
 
@@ -496,8 +479,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={1000}
+          defaultValue={[0, 1000]}
           fixedValues={fixedValues}
           showInputs
           onChange={onChange}
@@ -512,7 +494,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(0, 1000);
+        expect(onChange).toHaveBeenCalledWith([0, 1000]);
       });
 
       // Try value above maximum
@@ -522,7 +504,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(0, 1000);
+        expect(onChange).toHaveBeenCalledWith([0, 1000]);
       });
     });
 
@@ -531,8 +513,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={1000}
+          defaultValue={[0, 1000]}
           fixedValues={fixedValues}
           showInputs
           formatLabel={(val) => `€${val}`}
@@ -557,8 +538,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={100}
-          maxValue={500}
+          defaultValue={[100, 500]}
           fixedValues={fixedValues}
           showInputs
           allowPush={true}
@@ -572,7 +552,7 @@ describe("Range2 Component", () => {
       await user.keyboard("{Enter}");
 
       await waitFor(() => {
-        expect(onChange).toHaveBeenCalledWith(750, 750);
+        expect(onChange).toHaveBeenCalledWith([750, 750]);
       });
     });
 
@@ -582,8 +562,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={100}
-          maxValue={500}
+          defaultValue={[100, 500]}
           fixedValues={fixedValues}
           showInputs
           allowPush={false}
@@ -598,14 +577,14 @@ describe("Range2 Component", () => {
 
       await waitFor(() => {
         // Should clamp to maxValue (500)
-        expect(onChange).toHaveBeenCalledWith(500, 500);
+        expect(onChange).toHaveBeenCalledWith([500, 500]);
       });
     });
   });
 
   describe("Edge Cases", () => {
     it("should handle min value equal to 0", () => {
-      render(<Range minValue={0} maxValue={10} min={0} max={10} showInputs />);
+      render(<Range defaultValue={[0, 10]} min={0} max={10} showInputs />);
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
       expect(inputs[0].value).toBe("0");
@@ -613,7 +592,7 @@ describe("Range2 Component", () => {
 
     it("should handle negative values", () => {
       render(
-        <Range minValue={-10} maxValue={10} min={-10} max={10} showInputs />
+        <Range defaultValue={[-10, 10]} min={-10} max={10} showInputs />
       );
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
@@ -624,8 +603,7 @@ describe("Range2 Component", () => {
     it("should handle decimal values with step", () => {
       render(
         <Range
-          minValue={1.5}
-          maxValue={3.5}
+          defaultValue={[1.5, 3.5]}
           min={0}
           max={5}
           step={0.5}
@@ -640,7 +618,7 @@ describe("Range2 Component", () => {
 
     it("should handle very large ranges", () => {
       render(
-        <Range minValue={0} maxValue={10000} min={0} max={10000} showInputs />
+        <Range defaultValue={[0, 10000]} min={0} max={10000} showInputs />
       );
 
       const inputs = screen.getAllByRole("textbox") as HTMLInputElement[];
@@ -654,8 +632,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -679,7 +656,7 @@ describe("Range2 Component", () => {
   describe("ThumbGap Feature", () => {
     it("should render with thumbGap", () => {
       render(
-        <Range minValue={50} maxValue={50} min={0} max={100} thumbGap={5} />
+        <Range defaultValue={[50, 50]} min={0} max={100} thumbGap={5} />
       );
 
       const container = screen.getByTestId("range-container");
@@ -689,8 +666,7 @@ describe("Range2 Component", () => {
     it("should maintain visual separation when values are equal", () => {
       render(
         <Range
-          minValue={50}
-          maxValue={50}
+          defaultValue={[50, 50]}
           min={0}
           max={100}
           thumbGap={10}
@@ -709,8 +685,7 @@ describe("Range2 Component", () => {
     it("should disable all interactions when disabled=true", () => {
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -729,8 +704,7 @@ describe("Range2 Component", () => {
 
       render(
         <Range
-          minValue={0}
-          maxValue={100}
+          defaultValue={[0, 100]}
           min={0}
           max={100}
           showInputs
@@ -745,6 +719,548 @@ describe("Range2 Component", () => {
       await user.click(inputs[0]);
 
       expect(onChange).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("Keyboard Navigation", () => {
+    it("should move min thumb to minimum on Home key", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[50, 100]}
+          min={0}
+          max={100}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{Home}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([0, 100]);
+      });
+    });
+
+    it("should move min thumb to maximum on End key", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[0, 100]}
+          min={0}
+          max={100}
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{End}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([100, 100]);
+      });
+    });
+
+    it("should move max thumb to maximum on End key", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[0, 50]}
+          min={0}
+          max={100}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{End}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([0, 100]);
+      });
+    });
+
+    it("should move max thumb to minimum on Home key", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[0, 100]}
+          min={0}
+          max={100}
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{Home}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([0, 0]);
+      });
+    });
+
+    it("should increment min thumb value on ArrowUp", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[40, 80]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([50, 80]);
+      });
+    });
+
+    it("should increment min thumb value on ArrowRight", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[40, 80]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowRight}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([50, 80]);
+      });
+    });
+
+    it("should decrement min thumb value on ArrowDown", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[40, 80]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([30, 80]);
+      });
+    });
+
+    it("should decrement min thumb value on ArrowLeft", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[40, 80]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowLeft}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([30, 80]);
+      });
+    });
+
+    it("should increment max thumb value on ArrowUp", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[20, 60]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([20, 70]);
+      });
+    });
+
+    it("should decrement max thumb value on ArrowDown", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[20, 60]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([20, 50]);
+      });
+    });
+
+    it("should not exceed max value when incrementing min thumb", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[90, 100]}
+          min={0}
+          max={100}
+          step={10}
+          allowPush={false}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([100, 100]);
+      });
+    });
+
+    it("should not go below min value when decrementing min thumb", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[0, 50]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      // Should stay at 0 (already at minimum)
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should push max value when min increments beyond it (allowPush=true)", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[90, 100]}
+          min={0}
+          max={100}
+          step={10}
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([100, 100]);
+      });
+    });
+
+    it("should push min value when max decrements below it (allowPush=true)", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[0, 10]}
+          min={0}
+          max={100}
+          step={10}
+          allowPush={true}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([0, 0]);
+      });
+    });
+
+    it("should work with fixed values array", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const fixedValues = [0, 25, 50, 75, 100];
+
+      render(
+        <Range
+          defaultValue={[25, 75]}
+          fixedValues={fixedValues}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([50, 75]);
+      });
+    });
+
+    it("should navigate to next fixed value on increment", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const fixedValues = [0, 10, 25, 50, 100, 500, 1000];
+
+      render(
+        <Range
+          defaultValue={[10, 1000]}
+          fixedValues={fixedValues}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([25, 1000]);
+      });
+    });
+
+    it("should navigate to previous fixed value on decrement", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const fixedValues = [0, 10, 25, 50, 100, 500, 1000];
+
+      render(
+        <Range
+          defaultValue={[50, 1000]}
+          fixedValues={fixedValues}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      await waitFor(() => {
+        expect(onChange).toHaveBeenCalledWith([25, 1000]);
+      });
+    });
+
+    it("should not navigate when at first fixed value and decrementing", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const fixedValues = [0, 25, 50, 75, 100];
+
+      render(
+        <Range
+          defaultValue={[0, 100]}
+          fixedValues={fixedValues}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowDown}");
+
+      // Should stay at 0 (first fixed value)
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should not navigate when at last fixed value and incrementing", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      const fixedValues = [0, 25, 50, 75, 100];
+
+      render(
+        <Range
+          defaultValue={[0, 100]}
+          fixedValues={fixedValues}
+          onChange={onChange}
+        />
+      );
+
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+      maxThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      // Should stay at 100 (last fixed value)
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should not handle keyboard events when disabled", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[40, 80]}
+          min={0}
+          max={100}
+          step={10}
+          disabled
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+      await user.keyboard("{ArrowUp}");
+
+      expect(onChange).not.toHaveBeenCalled();
+    });
+
+    it("should support Tab navigation between thumbs", async () => {
+      const user = userEvent.setup();
+
+      render(<Range defaultValue={[25, 75]} min={0} max={100} />);
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+
+      minThumb.focus();
+      expect(document.activeElement).toBe(minThumb);
+
+      await user.keyboard("{Tab}");
+
+      expect(document.activeElement).toBe(maxThumb);
+    });
+
+    it("should support Shift+Tab navigation between thumbs", async () => {
+      const user = userEvent.setup();
+
+      render(<Range defaultValue={[25, 75]} min={0} max={100} />);
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      const maxThumb = screen.getByTestId("range-thumb-max-handle");
+
+      maxThumb.focus();
+      expect(document.activeElement).toBe(maxThumb);
+
+      await user.keyboard("{Shift>}{Tab}{/Shift}");
+
+      expect(document.activeElement).toBe(minThumb);
+    });
+
+    it("should blur thumbs when dragging starts with mouse", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[25, 75]}
+          min={0}
+          max={100}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+
+      // Focus with keyboard
+      minThumb.focus();
+      expect(document.activeElement).toBe(minThumb);
+
+      // Start dragging with mouse
+      await user.pointer({ keys: "[MouseLeft>]", target: minThumb });
+
+      // Thumb should lose focus when dragging
+      await waitFor(() => {
+        expect(document.activeElement).not.toBe(minThumb);
+      });
+    });
+
+    it("should handle multiple keyboard presses in sequence", async () => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+
+      render(
+        <Range
+          defaultValue={[50, 80]}
+          min={0}
+          max={100}
+          step={10}
+          onChange={onChange}
+        />
+      );
+
+      const minThumb = screen.getByTestId("range-thumb-min-handle");
+      minThumb.focus();
+
+      // Press ArrowUp multiple times
+      await user.keyboard("{ArrowUp}");
+      await user.keyboard("{ArrowUp}");
+      await user.keyboard("{ArrowUp}");
+
+      await waitFor(() => {
+        // 50 -> 60 -> 70 -> 80
+        expect(onChange).toHaveBeenLastCalledWith([80, 80]);
+      });
     });
   });
 });
