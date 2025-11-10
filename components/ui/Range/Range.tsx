@@ -7,6 +7,79 @@ import { useRef, useState, useEffect, useMemo, useCallback } from "react";
 import styles from "./Range.module.css";
 
 /**
+ * Calculate the final value based on fixedValues or min/max/step
+ */
+const calculateValue = (
+  numValue: number,
+  sortedFixedValues: number[] | null,
+  min: number,
+  max: number,
+  step: number,
+  decimals: number
+): number => {
+  if (sortedFixedValues) {
+    // Clamp to array boundaries first
+    const clampedValue = Math.max(
+      sortedFixedValues[0],
+      Math.min(sortedFixedValues[sortedFixedValues.length - 1], numValue)
+    );
+
+    // Find the closest value
+    return sortedFixedValues.reduce((prev, curr) => {
+      return Math.abs(curr - clampedValue) < Math.abs(prev - clampedValue)
+        ? curr
+        : prev;
+    });
+  } else {
+    const clampedValue = Math.max(min, Math.min(max, numValue));
+    const steppedValue = Math.round(clampedValue / step) * step;
+    return parseFloat(steppedValue.toFixed(decimals));
+  }
+};
+
+/**
+ * Apply push/boundary logic to calculated values
+ */
+const applyPushLogic = (
+  handle: "min" | "max",
+  calculatedValue: number,
+  currentMinValue: number,
+  currentMaxValue: number,
+  allowPush: boolean
+): { finalMinValue: number; finalMaxValue: number } => {
+  let finalMinValue = currentMinValue;
+  let finalMaxValue = currentMaxValue;
+
+  if (handle === "min") {
+    finalMinValue = calculatedValue;
+
+    if (allowPush) {
+      if (finalMinValue > finalMaxValue) {
+        finalMaxValue = finalMinValue;
+      }
+    } else {
+      if (finalMinValue > finalMaxValue) {
+        finalMinValue = finalMaxValue;
+      }
+    }
+  } else {
+    finalMaxValue = calculatedValue;
+
+    if (allowPush) {
+      if (finalMaxValue < finalMinValue) {
+        finalMinValue = finalMaxValue;
+      }
+    } else {
+      if (finalMaxValue < finalMinValue) {
+        finalMaxValue = finalMinValue;
+      }
+    }
+  }
+
+  return { finalMinValue, finalMaxValue };
+};
+
+/**
  * Range component - A slider with two thumbs to select a range of values
  *
  * Range is a customizable dual-thumb range slider component for selecting a numeric interval.
@@ -131,41 +204,24 @@ export const Range: React.FC<RangeProps> = ({
     const numValue = parseFloat(inputValue);
 
     if (!isNaN(numValue)) {
-      let finalMinValue: number;
-      let finalMaxValue = maxValue;
+      const calculatedValue = calculateValue(
+        numValue,
+        sortedFixedValues,
+        min,
+        max,
+        step,
+        decimals
+      );
 
-      if (sortedFixedValues) {
-        // Clamp to array boundaries first
-        const clampedValue = Math.max(
-          sortedFixedValues[0],
-          Math.min(sortedFixedValues[sortedFixedValues.length - 1], numValue)
-        );
-
-        // Find the closest value
-        finalMinValue = sortedFixedValues.reduce((prev, curr) => {
-          return Math.abs(curr - clampedValue) < Math.abs(prev - clampedValue)
-            ? curr
-            : prev;
-        });
-      } else {
-        const clampedValue = Math.max(min, Math.min(max, numValue));
-        const steppedValue = Math.round(clampedValue / step) * step;
-        finalMinValue = parseFloat(steppedValue.toFixed(decimals));
-      }
-
-      // Apply push/boundary logic
-      if (allowPush) {
-        if (finalMinValue > finalMaxValue) {
-          finalMaxValue = finalMinValue;
-        }
-      } else {
-        if (finalMinValue > finalMaxValue) {
-          finalMinValue = finalMaxValue;
-        }
-      }
+      const { finalMinValue, finalMaxValue } = applyPushLogic(
+        "min",
+        calculatedValue,
+        minValue,
+        maxValue,
+        allowPush
+      );
 
       setIsEditingMin(false);
-
       onChange?.(finalMinValue, finalMaxValue);
     } else {
       setIsEditingMin(false);
@@ -189,38 +245,22 @@ export const Range: React.FC<RangeProps> = ({
     const numValue = parseFloat(inputValue);
 
     if (!isNaN(numValue)) {
-      let finalMaxValue: number;
-      let finalMinValue = minValue;
+      const calculatedValue = calculateValue(
+        numValue,
+        sortedFixedValues,
+        min,
+        max,
+        step,
+        decimals
+      );
 
-      if (sortedFixedValues) {
-        // Clamp to array boundaries first
-        const clampedValue = Math.max(
-          sortedFixedValues[0],
-          Math.min(sortedFixedValues[sortedFixedValues.length - 1], numValue)
-        );
-
-        // Find the closest value
-        finalMaxValue = sortedFixedValues.reduce((prev, curr) => {
-          return Math.abs(curr - clampedValue) < Math.abs(prev - clampedValue)
-            ? curr
-            : prev;
-        });
-      } else {
-        const clampedValue = Math.max(min, Math.min(max, numValue));
-        const steppedValue = Math.round(clampedValue / step) * step;
-        finalMaxValue = parseFloat(steppedValue.toFixed(decimals));
-      }
-
-      // Apply push/boundary logic
-      if (allowPush) {
-        if (finalMaxValue < finalMinValue) {
-          finalMinValue = finalMaxValue;
-        }
-      } else {
-        if (finalMaxValue < finalMinValue) {
-          finalMaxValue = finalMinValue;
-        }
-      }
+      const { finalMinValue, finalMaxValue } = applyPushLogic(
+        "max",
+        calculatedValue,
+        minValue,
+        maxValue,
+        allowPush
+      );
 
       setIsEditingMax(false);
       onChange?.(finalMinValue, finalMaxValue);
