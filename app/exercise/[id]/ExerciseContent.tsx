@@ -86,6 +86,7 @@ export function ExerciseContent({ exerciseId, config }: ExerciseContentProps) {
             onChange={handleChange}
             formatLabel={formatCurrency}
             showInputs={true}
+            disabledInputs={true}
           />
         )
       )}
