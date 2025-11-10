@@ -674,15 +674,11 @@ export const Range: React.FC<RangeProps> = ({
   });
   return (
     <div
-      className={
-        showInputs
-          ? `${styles.wrapper} ${
-              orientation === "vertical"
-                ? styles.wrapperVertical
-                : styles.wrapperHorizontal
-            }`
-          : ""
-      }
+      className={`${showInputs ? styles.wrapper : ""} ${
+        orientation === "vertical"
+          ? styles.wrapperVertical
+          : styles.wrapperHorizontal
+      }`}
     >
       {showInputs && (
         <div
@@ -692,31 +688,33 @@ export const Range: React.FC<RangeProps> = ({
               : styles.inputsContainerHorizontal
           }`}
         >
-          <div className={`${styles.inputWrapper} ${styles.inputWrapperLeft}`}>
-            <NumericInput
-              inputRef={minInputRef}
-              value={minInputValue}
-              onChange={handleMinInputChange}
-              onBlur={applyMinValue}
-              onKeyDown={handleMinInputKeyDown}
-              disabled={disabled || disabledInputs}
-              id="range-min-input"
-              formatLabel={formatLabel}
-            />
-          </div>
-
-          <div className={`${styles.inputWrapper} ${styles.inputWrapperRight}`}>
-            <NumericInput
-              inputRef={maxInputRef}
-              value={maxInputValue}
-              onChange={handleMaxInputChange}
-              onBlur={applyMaxValue}
-              onKeyDown={handleMaxInputKeyDown}
-              disabled={disabled || disabledInputs}
-              id="range-max-input"
-              formatLabel={formatLabel}
-            />
-          </div>
+          {[
+            orientation === "vertical" ? "max" : "min",
+            orientation === "vertical" ? "min" : "max",
+          ].map((type) => {
+            const isMin = type === "min";
+            return (
+              <div
+                key={type}
+                className={`${styles.inputWrapper} ${
+                  isMin ? styles.inputWrapperLeft : styles.inputWrapperRight
+                }`}
+              >
+                <NumericInput
+                  inputRef={isMin ? minInputRef : maxInputRef}
+                  value={isMin ? minInputValue : maxInputValue}
+                  onChange={isMin ? handleMinInputChange : handleMaxInputChange}
+                  onBlur={isMin ? applyMinValue : applyMaxValue}
+                  onKeyDown={
+                    isMin ? handleMinInputKeyDown : handleMaxInputKeyDown
+                  }
+                  disabled={disabled || disabledInputs}
+                  id={isMin ? "range-min-input" : "range-max-input"}
+                  formatLabel={formatLabel}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
 
