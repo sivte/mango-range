@@ -22,13 +22,17 @@ export default function Home() {
             <span>Range Component</span>
           </h1>
           <p className="text-lg leading-relaxed max-w-[600px] mx-auto text-text-secondary">
-            Custom range slider component built with Next.js and TypeScript
+            Custom range slider component built with React and TypeScript
           </p>
           <div className="flex gap-2 flex-wrap justify-center mt-4">
             <Badge>Multi-touch support</Badge>
             <Badge>Push thumb control</Badge>
             <Badge>Editable values</Badge>
             <Badge>Fixed values mode</Badge>
+            <Badge>Vertical/Horizontal support</Badge>
+            <Badge>Thumb gap</Badge>
+            <Badge>Custom formatting</Badge>
+            <Badge>Step control</Badge>
           </div>
         </div>
 
